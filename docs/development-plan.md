@@ -72,6 +72,7 @@ The system prioritizes:
 * **Complete:** Preview zoom controls (1×, 2×, 4×) with pixel grid toggle at higher zoom
 * **Complete:** Preview state indicators (active/stale) and region metadata display
 * **Complete:** Sticky preview header/canvas with scrollable controls; active region frame persists on full image
+* **Complete:** Live preview updates on slider change with busy/progress feedback
 
 ---
 
