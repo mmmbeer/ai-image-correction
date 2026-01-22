@@ -40,6 +40,7 @@
   position: relative;
   background: #000;
   border: 2px solid var(--color-border-strong);
+  cursor: crosshair;
 }
 
 .preview-box {
@@ -47,17 +48,66 @@
   border: 2px dashed var(--color-accent);
   background: rgba(0, 209, 255, 0.08);
   pointer-events: none;
+  display: none;
 }
 
 .preview-panel {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   gap: 12px;
 }
 
 .preview-canvas {
   border: var(--border-hard);
   background: #000;
+}
+
+.preview-panel.is-active .preview-canvas {
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.preview-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-bg-panel);
+  border: var(--border-hard);
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+}
+
+.preview-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.preview-meta {
+  color: var(--color-text-muted);
+}
+
+.badge-warning {
+  background: var(--color-warning);
+  color: #000;
+}
+
+#previewStaleBadge {
+  display: none;
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+}
+
+.btn.is-active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: var(--text-xs);
 }
 
 .controls {
@@ -124,9 +174,60 @@
     <!-- PREVIEW + CONTROLS -->
     <div class="preview-panel">
 
+      <div class="preview-status" id="previewStatus">
+        <div class="preview-badges">
+          <span class="badge badge-danger" id="previewActiveBadge">Preview Inactive</span>
+          <span class="badge badge-warning" id="previewStaleBadge">Preview Stale</span>
+        </div>
+        <div class="preview-meta" id="previewMeta">No selection</div>
+      </div>
+
       <canvas id="previewCanvas" class="preview-canvas"></canvas>
 
       <div class="controls">
+
+        <!-- PREVIEW TOOLS -->
+        <div class="control-group">
+          <h4>Preview Tools</h4>
+
+          <div class="control">
+            <label>Selection Mode</label>
+            <select id="selectionMode" class="form-select">
+              <option value="fixed">Fixed</option>
+              <option value="drag">Drag to Size</option>
+            </select>
+            <small>Fixed uses the hover box. Drag lets you resize the region.</small>
+          </div>
+
+          <div class="control">
+            <label>Preview Size (px)</label>
+            <input type="number" id="previewWidth" value="160" min="16" max="2048">
+            <input type="number" id="previewHeight" value="160" min="16" max="2048">
+            <small>Used for fixed-size selection.</small>
+          </div>
+
+          <div class="control">
+            <label>Aspect Lock</label>
+            <input type="checkbox" id="previewAspectLock" checked>
+            <small>Keep the selection ratio when dragging.</small>
+          </div>
+
+          <div class="control">
+            <label>Zoom</label>
+            <div class="segmented" id="previewZoom">
+              <button class="btn btn-small" data-zoom="1">1x</button>
+              <button class="btn btn-small" data-zoom="2">2x</button>
+              <button class="btn btn-small" data-zoom="4">4x</button>
+            </div>
+            <small>Pixel-accurate zoom for inspection.</small>
+          </div>
+
+          <div class="control">
+            <label>Pixel Grid</label>
+            <input type="checkbox" id="previewPixelGrid">
+            <small>Available at 2× and 4× zoom.</small>
+          </div>
+        </div>
 
         <!-- COLOR SMOOTHING -->
         <div class="control-group">
@@ -134,15 +235,15 @@
 
           <div class="control">
             <label>Bilateral Radius</label>
-            <input type="number" value="3">
-            <input type="range" min="1" max="6" step="1">
+            <input type="number" id="radiusNumber" value="3" min="1" max="12">
+            <input type="range" id="radiusRange" min="1" max="12" step="1" value="3">
             <small>Spatial neighborhood size. Higher values flatten larger regions.</small>
           </div>
 
           <div class="control">
             <label>Color Sigma</label>
-            <input type="number" value="30">
-            <input type="range" min="5" max="80" step="1">
+            <input type="number" id="sigmaColorNumber" value="30" min="5" max="200">
+            <input type="range" id="sigmaColorRange" min="5" max="200" step="1" value="30">
             <small>Controls how aggressively color differences are blended.</small>
           </div>
         </div>
@@ -193,13 +294,14 @@
       </div>
 
       <div class="apply">
-        <button class="btn">Reset Preview</button>
-        <button class="btn btn-primary">Apply to Full Image</button>
+        <button class="btn" id="resetPreview">Reset Preview</button>
+        <button class="btn btn-primary" id="applyFull">Apply to Full Image</button>
       </div>
 
     </div>
   </div>
 </div>
 
+<script type="module" src="app.js"></script>
 </body>
 </html>

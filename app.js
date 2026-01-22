@@ -1,47 +1,243 @@
 import { loadImage } from './imageLoader.js';
 import { initPreviewSelector } from './previewSelector.js';
-import { createSliders } from './ui/sliders.js';
 import { smoothRegion } from './smoothing/smoother.js';
+import { clamp } from './utils/math.js';
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let originalImage = null;
+const fullCanvas = document.getElementById('fullCanvas');
+const previewCanvas = document.getElementById('previewCanvas');
+const previewBox = document.getElementById('previewBox');
+
+const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
+const previewCtx = previewCanvas.getContext('2d');
+const bufferCanvas = document.createElement('canvas');
+const bufferCtx = bufferCanvas.getContext('2d', { willReadFrequently: true });
+
+const previewPanel = document.querySelector('.preview-panel');
+const previewActiveBadge = document.getElementById('previewActiveBadge');
+const previewStaleBadge = document.getElementById('previewStaleBadge');
+const previewMeta = document.getElementById('previewMeta');
+
+const selectionMode = document.getElementById('selectionMode');
+const previewWidthInput = document.getElementById('previewWidth');
+const previewHeightInput = document.getElementById('previewHeight');
+const aspectLockInput = document.getElementById('previewAspectLock');
+const zoomButtons = document.querySelectorAll('#previewZoom button');
+const pixelGridInput = document.getElementById('previewPixelGrid');
+
+const radiusNumber = document.getElementById('radiusNumber');
+const radiusRange = document.getElementById('radiusRange');
+const sigmaColorNumber = document.getElementById('sigmaColorNumber');
+const sigmaColorRange = document.getElementById('sigmaColorRange');
+
+const resetPreviewButton = document.getElementById('resetPreview');
+const applyFullButton = document.getElementById('applyFull');
+
+let imageLoaded = false;
 let previewRegion = null;
+let previewZoom = 1;
+let previewStale = false;
 
 document.getElementById('upload').onchange = e => {
-  loadImage(e.target.files[0], canvas, ctx).then(img => {
-    originalImage = img;
+  const file = e.target.files[0];
+  if (!file) return;
+  loadImage(file, fullCanvas, fullCtx).then(() => {
+    imageLoaded = true;
     previewRegion = null;
+    setPreviewActive(false);
+    setPreviewStale(false);
+    previewMeta.textContent = 'No selection';
+    syncPreviewSizeToImage();
   });
 };
 
-initPreviewSelector(canvas, region => {
-  previewRegion = region;
-  applyPreview();
+bindRangeNumber(radiusRange, radiusNumber, handleSettingsChange);
+bindRangeNumber(sigmaColorRange, sigmaColorNumber, handleSettingsChange);
+
+selectionMode.addEventListener('change', () => {
+  toggleFixedInputs();
 });
 
-const sliders = createSliders(document.getElementById('controls'), applyPreview);
+previewWidthInput.addEventListener('input', handleSettingsChange);
+previewHeightInput.addEventListener('input', handleSettingsChange);
+aspectLockInput.addEventListener('change', handleSettingsChange);
+pixelGridInput.addEventListener('change', () => {
+  if (previewRegion) renderPreview();
+});
 
-function applyPreview() {
-  if (!originalImage || !previewRegion) return;
+zoomButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    setPreviewZoom(Number(button.dataset.zoom));
+  });
+});
 
-  ctx.drawImage(originalImage, 0, 0);
+resetPreviewButton.addEventListener('click', () => {
+  previewRegion = null;
+  previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  setPreviewActive(false);
+  setPreviewStale(false);
+  previewMeta.textContent = 'No selection';
+});
 
-  const imgData = ctx.getImageData(
-    previewRegion.x,
-    previewRegion.y,
-    previewRegion.w,
-    previewRegion.h
-  );
+applyFullButton.addEventListener('click', () => {
+  if (!imageLoaded) return;
+  const img = fullCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height);
+  const smoothed = smoothRegion(img, getSmoothingOptions());
+  fullCtx.putImageData(smoothed, 0, 0);
+  setPreviewStale(true);
+});
 
-  const smoothed = smoothRegion(imgData, sliders.values());
-  ctx.putImageData(smoothed, previewRegion.x, previewRegion.y);
+initPreviewSelector({
+  canvas: fullCanvas,
+  previewBox,
+  isEnabled: () => imageLoaded,
+  getMode: () => selectionMode.value,
+  getFixedSize: getFixedSize,
+  isAspectLocked: () => aspectLockInput.checked,
+  getAspectRatio: getAspectRatio,
+  onHover: region => {
+    if (!region) return;
+    if (!previewRegion) {
+      previewMeta.textContent = formatRegion(region);
+    }
+  },
+  onSelect: region => {
+    previewRegion = region;
+    renderPreview();
+  }
+});
+
+setPreviewZoom(1);
+toggleFixedInputs();
+setPreviewActive(false);
+setPreviewStale(false);
+
+function bindRangeNumber(rangeInput, numberInput, onChange) {
+  rangeInput.addEventListener('input', () => {
+    numberInput.value = rangeInput.value;
+    onChange();
+  });
+  numberInput.addEventListener('input', () => {
+    rangeInput.value = numberInput.value;
+    onChange();
+  });
 }
 
-document.getElementById('applyFull').onclick = () => {
-  if (!originalImage) return;
+function handleSettingsChange() {
+  if (!previewRegion) return;
+  setPreviewStale(true);
+}
 
-  ctx.drawImage(originalImage, 0, 0);
-  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-  ctx.putImageData(smoothRegion(img, sliders.values()), 0, 0);
-};
+function getSmoothingOptions() {
+  return {
+    radius: clamp(parseInt(radiusNumber.value, 10) || 3, 1, 12),
+    sigmaColor: clamp(parseInt(sigmaColorNumber.value, 10) || 30, 1, 200),
+    sigmaSpace: 4,
+    quant: 0
+  };
+}
+
+function getFixedSize() {
+  const maxW = fullCanvas.width || 2048;
+  const maxH = fullCanvas.height || 2048;
+  const w = clamp(parseInt(previewWidthInput.value, 10) || 160, 16, maxW);
+  const h = clamp(parseInt(previewHeightInput.value, 10) || 160, 16, maxH);
+  return { w, h };
+}
+
+function getAspectRatio() {
+  const size = getFixedSize();
+  if (!size.w || !size.h) return 1;
+  return size.w / size.h;
+}
+
+function setPreviewZoom(zoom) {
+  previewZoom = zoom;
+  zoomButtons.forEach(button => {
+    button.classList.toggle('is-active', Number(button.dataset.zoom) === zoom);
+  });
+
+  if (zoom < 2) {
+    pixelGridInput.checked = false;
+    pixelGridInput.disabled = true;
+  } else {
+    pixelGridInput.disabled = false;
+  }
+
+  if (previewRegion) renderPreview();
+}
+
+function toggleFixedInputs() {
+  const disabled = selectionMode.value !== 'fixed';
+  previewWidthInput.disabled = disabled;
+  previewHeightInput.disabled = disabled;
+}
+
+function renderPreview() {
+  if (!imageLoaded || !previewRegion) return;
+
+  const { x, y, w, h } = previewRegion;
+  const imgData = fullCtx.getImageData(x, y, w, h);
+  const smoothed = smoothRegion(imgData, getSmoothingOptions());
+
+  bufferCanvas.width = w;
+  bufferCanvas.height = h;
+  bufferCtx.putImageData(smoothed, 0, 0);
+
+  previewCanvas.width = w * previewZoom;
+  previewCanvas.height = h * previewZoom;
+  previewCtx.imageSmoothingEnabled = false;
+  previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  previewCtx.drawImage(bufferCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+
+  if (pixelGridInput.checked && previewZoom >= 2) {
+    drawPixelGrid(previewCtx, previewCanvas.width, previewCanvas.height, previewZoom);
+  }
+
+  previewMeta.textContent = `${formatRegion(previewRegion)} | ${previewZoom}x`;
+  setPreviewActive(true);
+  setPreviewStale(false);
+}
+
+function drawPixelGrid(ctx, width, height, zoom) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+
+  for (let x = 0; x <= width; x += zoom) {
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, height);
+  }
+  for (let y = 0; y <= height; y += zoom) {
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(width, y + 0.5);
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
+function formatRegion(region) {
+  return `Region ${region.w}x${region.h} at ${region.x},${region.y}`;
+}
+
+function syncPreviewSizeToImage() {
+  if (!imageLoaded) return;
+  const current = getFixedSize();
+  const w = Math.min(current.w, fullCanvas.width);
+  const h = Math.min(current.h, fullCanvas.height);
+  previewWidthInput.value = w;
+  previewHeightInput.value = h;
+}
+
+function setPreviewActive(active) {
+  previewPanel.classList.toggle('is-active', active);
+  previewActiveBadge.textContent = active ? 'Preview Active' : 'Preview Inactive';
+  previewActiveBadge.classList.toggle('badge-success', active);
+  previewActiveBadge.classList.toggle('badge-danger', !active);
+}
+
+function setPreviewStale(stale) {
+  previewStale = stale;
+  previewStaleBadge.style.display = stale && previewRegion ? 'inline-flex' : 'none';
+}
