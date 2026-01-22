@@ -15,6 +15,8 @@ const bufferCanvas = document.createElement('canvas');
 const bufferCtx = bufferCanvas.getContext('2d', { willReadFrequently: true });
 const edgeCanvas = document.createElement('canvas');
 const edgeCtx = edgeCanvas.getContext('2d');
+const baseCanvas = document.createElement('canvas');
+const baseCtx = baseCanvas.getContext('2d', { willReadFrequently: true });
 
 const previewPanel = document.querySelector('.preview-panel');
 const previewActiveBadge = document.getElementById('previewActiveBadge');
@@ -53,12 +55,18 @@ let previewZoom = 1;
 let previewStale = false;
 let isRendering = false;
 let renderQueued = false;
+let baseReady = false;
 
 document.getElementById('upload').onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
   loadImage(file, fullCanvas, fullCtx).then(() => {
     imageLoaded = true;
+    baseReady = true;
+    baseCanvas.width = fullCanvas.width;
+    baseCanvas.height = fullCanvas.height;
+    baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+    baseCtx.drawImage(fullCanvas, 0, 0);
     previewRegion = null;
     setPreviewActive(false);
     setPreviewStale(false);
@@ -129,7 +137,7 @@ applyFullButton.addEventListener('click', () => {
   if (!imageLoaded) return;
   setBusy(true);
   setTimeout(() => {
-    const img = fullCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height);
+    const img = getBaseImageData(0, 0, fullCanvas.width, fullCanvas.height);
     const options = getSmoothingOptions();
     let smoothed = smoothRegion(img, options);
 
@@ -300,7 +308,7 @@ function renderPreview() {
   if (!imageLoaded || !previewRegion) return;
 
   const { x, y, w, h } = previewRegion;
-  const imgData = fullCtx.getImageData(x, y, w, h);
+  const imgData = getBaseImageData(x, y, w, h);
   const options = getSmoothingOptions();
   let smoothed = smoothRegion(imgData, options);
   let edgeMap = null;
@@ -449,13 +457,13 @@ function updateActivePreviewBox() {
     return;
   }
 
-  const rect = fullCanvas.getBoundingClientRect();
-  const scaleX = rect.width ? rect.width / fullCanvas.width : 1;
-  const scaleY = rect.height ? rect.height / fullCanvas.height : 1;
+  const metrics = getCanvasMetrics(fullCanvas);
+  const scaleX = metrics.scale;
+  const scaleY = metrics.scale;
 
   activePreviewBox.style.display = 'block';
-  activePreviewBox.style.left = `${previewRegion.x * scaleX}px`;
-  activePreviewBox.style.top = `${previewRegion.y * scaleY}px`;
+  activePreviewBox.style.left = `${metrics.offsetX + previewRegion.x * scaleX}px`;
+  activePreviewBox.style.top = `${metrics.offsetY + previewRegion.y * scaleY}px`;
   activePreviewBox.style.width = `${previewRegion.w * scaleX}px`;
   activePreviewBox.style.height = `${previewRegion.h * scaleY}px`;
 }
@@ -472,6 +480,25 @@ function clampRegion(region, maxW, maxH) {
     w: Math.round(w),
     h: Math.round(h)
   };
+}
+
+function getBaseImageData(x, y, w, h) {
+  if (baseReady && baseCanvas.width && baseCanvas.height) {
+    return baseCtx.getImageData(x, y, w, h);
+  }
+  return fullCtx.getImageData(x, y, w, h);
+}
+
+function getCanvasMetrics(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const scale = rect.width && rect.height
+    ? Math.min(rect.width / canvas.width, rect.height / canvas.height)
+    : 1;
+  const displayW = canvas.width * scale;
+  const displayH = canvas.height * scale;
+  const offsetX = (rect.width - displayW) / 2;
+  const offsetY = (rect.height - displayH) / 2;
+  return { scale, offsetX, offsetY };
 }
 
 function setBusy(busy) {

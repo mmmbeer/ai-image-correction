@@ -122,13 +122,13 @@ export function initPreviewSelector({
   }
 
   function showBox(region) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width ? rect.width / canvas.width : 1;
-    const scaleY = rect.height ? rect.height / canvas.height : 1;
+    const metrics = getCanvasMetrics();
+    const scaleX = metrics.scale;
+    const scaleY = metrics.scale;
 
     previewBox.style.display = 'block';
-    previewBox.style.left = `${region.x * scaleX}px`;
-    previewBox.style.top = `${region.y * scaleY}px`;
+    previewBox.style.left = `${metrics.offsetX + region.x * scaleX}px`;
+    previewBox.style.top = `${metrics.offsetY + region.y * scaleY}px`;
     previewBox.style.width = `${region.w * scaleX}px`;
     previewBox.style.height = `${region.h * scaleY}px`;
   }
@@ -139,11 +139,24 @@ export function initPreviewSelector({
 
   function getPos(e) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const metrics = getCanvasMetrics();
+    const scaleX = 1 / metrics.scale;
+    const scaleY = 1 / metrics.scale;
     return {
-      x: Math.floor((e.clientX - rect.left) * scaleX),
-      y: Math.floor((e.clientY - rect.top) * scaleY)
+      x: Math.floor((e.clientX - rect.left - metrics.offsetX) * scaleX),
+      y: Math.floor((e.clientY - rect.top - metrics.offsetY) * scaleY)
     };
+  }
+
+  function getCanvasMetrics() {
+    const rect = canvas.getBoundingClientRect();
+    const scale = rect.width && rect.height
+      ? Math.min(rect.width / canvas.width, rect.height / canvas.height)
+      : 1;
+    const displayW = canvas.width * scale;
+    const displayH = canvas.height * scale;
+    const offsetX = (rect.width - displayW) / 2;
+    const offsetY = (rect.height - displayH) / 2;
+    return { scale, offsetX, offsetY };
   }
 }

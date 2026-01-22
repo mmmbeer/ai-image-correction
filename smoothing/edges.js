@@ -31,7 +31,10 @@ export function detectEdges(imgData, options = {}) {
 
   const smooth = Math.max(0, Math.min(3, Math.floor(options.smooth || 0)));
   if (smooth > 0) {
-    return blurEdgeMap(edge, width, height, smooth);
+    let refined = closeEdgeMap(edge, width, height, smooth);
+    refined = blurEdgeMap(refined, width, height, 1);
+    refined = hardenEdgeMap(refined, 0.2);
+    return refined;
   }
 
   return edge;
@@ -83,4 +86,67 @@ function blurEdgeMap(edgeMap, width, height, radius) {
   }
 
   return src;
+}
+
+function closeEdgeMap(edgeMap, width, height, passes) {
+  let src = edgeMap;
+  for (let i = 0; i < passes; i++) {
+    const dilated = dilateEdgeMap(src, width, height);
+    src = erodeEdgeMap(dilated, width, height);
+  }
+  return src;
+}
+
+function dilateEdgeMap(edgeMap, width, height) {
+  const out = new Float32Array(edgeMap.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let max = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= width) continue;
+          const v = edgeMap[ny * width + nx];
+          if (v > max) max = v;
+        }
+      }
+      out[y * width + x] = max;
+    }
+  }
+  return out;
+}
+
+function erodeEdgeMap(edgeMap, width, height) {
+  const out = new Float32Array(edgeMap.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let min = 1;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= width) continue;
+          const v = edgeMap[ny * width + nx];
+          if (v < min) min = v;
+        }
+      }
+      out[y * width + x] = min;
+    }
+  }
+  return out;
+}
+
+function hardenEdgeMap(edgeMap, threshold) {
+  const out = new Float32Array(edgeMap.length);
+  const t = Math.max(0, Math.min(0.6, threshold));
+  const inv = 1 / Math.max(0.001, 1 - t);
+  for (let i = 0; i < edgeMap.length; i++) {
+    const v = edgeMap[i];
+    const boosted = Math.max(0, v - t) * inv;
+    out[i] = Math.min(1, boosted);
+  }
+  return out;
 }
