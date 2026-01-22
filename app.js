@@ -7,8 +7,10 @@ import { clamp } from './utils/math.js';
 
 const fullCanvas = document.getElementById('fullCanvas');
 const previewCanvas = document.getElementById('previewCanvas');
+const previewCanvasWrap = document.getElementById('previewCanvasWrap');
 const previewBox = document.getElementById('previewBox');
 const activePreviewBox = document.getElementById('activePreviewBox');
+const fullImage = document.querySelector('.full-image');
 
 const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
 const previewCtx = previewCanvas.getContext('2d');
@@ -63,6 +65,7 @@ const applyFullButton = document.getElementById('applyFull');
 let imageLoaded = false;
 let previewRegion = null;
 let previewZoom = 1;
+let fullZoom = 1;
 let previewStale = false;
 let isRendering = false;
 let renderQueued = false;
@@ -78,6 +81,8 @@ document.getElementById('upload').onchange = e => {
     baseCanvas.height = fullCanvas.height;
     baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
     baseCtx.drawImage(fullCanvas, 0, 0);
+    fullZoom = 1;
+    updateFullCanvasScale();
     previewRegion = null;
     setPreviewActive(false);
     setPreviewStale(false);
@@ -102,6 +107,22 @@ previewSettingsToggle.addEventListener('click', e => {
   const isOpen = previewSettings.classList.toggle('is-open');
   previewSettingsToggle.setAttribute('aria-expanded', String(isOpen));
 });
+
+fullImage.addEventListener('wheel', e => {
+  if (!imageLoaded) return;
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    adjustFullZoom(e.deltaY);
+  }
+}, { passive: false });
+
+previewCanvasWrap.addEventListener('wheel', e => {
+  if (!previewRegion) return;
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    adjustPreviewZoom(e.deltaY);
+  }
+}, { passive: false });
 
 document.addEventListener('click', e => {
   if (!previewSettings.classList.contains('is-open')) return;
@@ -203,6 +224,9 @@ window.addEventListener('resize', () => {
     syncPreviewSizeToImage();
     updatePreviewRegionForFixedSize();
   }
+  if (imageLoaded) {
+    updateFullCanvasScale();
+  }
   updateActivePreviewBox();
   if (previewRegion) schedulePreviewRender();
 });
@@ -287,12 +311,13 @@ function getAspectRatio() {
 }
 
 function setPreviewZoom(zoom) {
-  previewZoom = zoom;
+  previewZoom = clamp(zoom, 0.5, 8);
   zoomButtons.forEach(button => {
-    button.classList.toggle('is-active', Number(button.dataset.zoom) === zoom);
+    const target = Number(button.dataset.zoom);
+    button.classList.toggle('is-active', Math.abs(target - previewZoom) < 0.05);
   });
 
-  if (zoom < 2) {
+  if (previewZoom < 2) {
     pixelGridInput.checked = false;
     pixelGridInput.disabled = true;
   } else {
@@ -300,6 +325,35 @@ function setPreviewZoom(zoom) {
   }
 
   if (previewRegion) schedulePreviewRender();
+}
+
+function adjustPreviewZoom(deltaY) {
+  const step = 0.1;
+  const direction = deltaY > 0 ? -1 : 1;
+  const next = previewZoom + direction * step;
+  setPreviewZoom(next);
+}
+
+function adjustFullZoom(deltaY) {
+  const step = 0.1;
+  const direction = deltaY > 0 ? -1 : 1;
+  fullZoom = clamp(fullZoom + direction * step, 0.5, 6);
+  updateFullCanvasScale();
+  updateActivePreviewBox();
+}
+
+function updateFullCanvasScale() {
+  if (!imageLoaded) return;
+  const baseScale = getFullBaseScale();
+  const scale = baseScale * fullZoom;
+  fullCanvas.style.width = `${Math.max(1, Math.round(fullCanvas.width * scale))}px`;
+  fullCanvas.style.height = `${Math.max(1, Math.round(fullCanvas.height * scale))}px`;
+}
+
+function getFullBaseScale() {
+  const w = Math.max(1, fullImage.clientWidth || 1);
+  const h = Math.max(1, fullImage.clientHeight || 1);
+  return Math.min(w / fullCanvas.width, h / fullCanvas.height);
 }
 
 function toggleFixedInputs() {
@@ -352,11 +406,15 @@ function renderPreview() {
   bufferCanvas.height = h;
   bufferCtx.putImageData(smoothed, 0, 0);
 
-  const displayWidth = previewCanvas.clientWidth || 1;
-  const displayHeight = previewCanvas.clientHeight || 1;
+  const displayWidth = previewCanvasWrap.clientWidth || 1;
+  const displayHeight = previewCanvasWrap.clientHeight || 1;
   const dpr = window.devicePixelRatio || 1;
-  const targetWidth = Math.max(1, Math.floor(displayWidth * dpr));
-  const targetHeight = Math.max(1, Math.floor(displayHeight * dpr));
+  const baseScale = Math.min(displayWidth / w, displayHeight / h);
+  const scale = baseScale * previewZoom;
+  const scaledW = Math.max(1, Math.round(w * scale));
+  const scaledH = Math.max(1, Math.round(h * scale));
+  const targetWidth = Math.max(1, Math.floor(scaledW * dpr));
+  const targetHeight = Math.max(1, Math.floor(scaledH * dpr));
 
   if (previewCanvas.width !== targetWidth || previewCanvas.height !== targetHeight) {
     previewCanvas.width = targetWidth;
@@ -365,31 +423,26 @@ function renderPreview() {
 
   previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   previewCtx.imageSmoothingEnabled = false;
-  previewCtx.clearRect(0, 0, displayWidth, displayHeight);
+  previewCtx.clearRect(0, 0, scaledW, scaledH);
 
-  const baseScale = Math.min(displayWidth / w, displayHeight / h);
-  const scale = baseScale * previewZoom;
-  const drawW = w * scale;
-  const drawH = h * scale;
-  const offsetX = Math.max(0, (displayWidth - drawW) / 2);
-  const offsetY = Math.max(0, (displayHeight - drawH) / 2);
-
-  previewCtx.drawImage(bufferCanvas, offsetX, offsetY, drawW, drawH);
+  previewCanvas.style.width = `${scaledW}px`;
+  previewCanvas.style.height = `${scaledH}px`;
+  previewCtx.drawImage(bufferCanvas, 0, 0, scaledW, scaledH);
 
   if (edgeMap && options.edgeOverlay) {
     edgeCanvas.width = w;
     edgeCanvas.height = h;
     const overlay = edgeMapToImageData(edgeMap, w, h, { opacity: 0.75 });
     edgeCtx.putImageData(overlay, 0, 0);
-    previewCtx.drawImage(edgeCanvas, offsetX, offsetY, drawW, drawH);
+    previewCtx.drawImage(edgeCanvas, 0, 0, scaledW, scaledH);
   }
 
   const gridScale = scale;
   if (pixelGridInput.checked && gridScale >= 2) {
-    drawPixelGrid(previewCtx, displayWidth, displayHeight, gridScale, offsetX, offsetY, drawW, drawH);
+    drawPixelGrid(previewCtx, scaledW, scaledH, gridScale, 0, 0, scaledW, scaledH);
   }
 
-  previewSizeTag.textContent = `${formatRegion(previewRegion)} | ${previewZoom}x`;
+  previewSizeTag.textContent = `${formatRegion(previewRegion)} | ${formatZoom(previewZoom)}x`;
   setPreviewActive(true);
   setPreviewStale(false);
 }
@@ -442,6 +495,13 @@ function applyEdgePreserve(original, smoothed, edgeMap, strength) {
 
 function formatRegion(region) {
   return `Region ${region.w}x${region.h} at ${region.x},${region.y}`;
+}
+
+function formatZoom(zoom) {
+  if (Math.abs(zoom - Math.round(zoom)) < 0.01) {
+    return Math.round(zoom).toString();
+  }
+  return zoom.toFixed(2);
 }
 
 function updatePreviewRegionForFixedSize() {

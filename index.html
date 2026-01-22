@@ -44,7 +44,7 @@
   border: 2px solid var(--color-border-strong);
   cursor: crosshair;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .full-image canvas {
@@ -85,11 +85,15 @@
   padding-bottom: 8px;
 }
 
-.preview-canvas {
+.preview-canvas-wrap {
   border: var(--border-hard);
   background: #000;
   width: 100%;
   height: 160px;
+  overflow: auto;
+}
+
+.preview-canvas {
   display: block;
 }
 
@@ -345,7 +349,9 @@
           <div class="preview-progress-bar"></div>
         </div>
 
-        <canvas id="previewCanvas" class="preview-canvas"></canvas>
+        <div class="preview-canvas-wrap" id="previewCanvasWrap">
+          <canvas id="previewCanvas" class="preview-canvas"></canvas>
+        </div>
         <div id="previewSizeTag">No selection</div>
       </div>
 
