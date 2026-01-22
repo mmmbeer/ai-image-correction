@@ -88,6 +88,20 @@ The system prioritizes:
 * Adjustable chroma smoothing strength
 * Safe upper bounds to prevent color collapse
 
+### Correction Features and Options (Robust Set)
+
+* Chroma-only strength (primary) with separate A/B sliders
+* Radius (spatial sigma) and range (color sigma) for bilateral control
+* Luminance lock (on by default) with optional limited L blending
+* Chroma clamp to prevent saturation collapse or hue drift
+* Adaptive chroma smoothing based on local color variance
+* Protect-skin tones toggle (hue-range guard with falloff)
+* Preserve highlights/shadows (L-based threshold mask)
+* Neutral protection (avoid shifting low-saturation regions)
+* Artifact boost view (preview-only exaggeration of chroma noise)
+* Before/after split and A/B quick toggle in preview
+* Safe preset tiers: Subtle / Balanced / Aggressive
+
 ### UI
 
 * “Chroma Smooth” primary control
@@ -99,6 +113,15 @@ The system prioritizes:
 * Side-by-side RGB vs LAB preview
 * Stress test on highly textured AI images
 * Ensure no luminance bleeding
+
+### Phase 2 Progress
+
+* **In progress:** Phase 2 scope expanded with robust correction options and safety guards
+* **Next:** Wire LAB bilateral to chroma-only path (A/B) with L lock
+* **Next:** Add chroma clamp and neutral protection safeguards
+* **Next:** Add adaptive variance-based smoothing
+* **Next:** Implement UI controls for strength, radius, range, and per-channel tuning
+* **Next:** Add preview comparison (A/B toggle or split)
 
 ---
 
