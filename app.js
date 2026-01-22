@@ -1,6 +1,7 @@
 import { loadImage } from './imageLoader.js';
 import { initPreviewSelector } from './previewSelector.js';
 import { smoothRegion } from './smoothing/smoother.js';
+import { boostChromaArtifacts } from './smoothing/chroma.js';
 import { detectEdges, edgeMapToImageData } from './smoothing/edges.js';
 import { softenEdges } from './smoothing/edgeSoften.js';
 import { clamp } from './utils/math.js';
@@ -16,6 +17,8 @@ const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
 const previewCtx = previewCanvas.getContext('2d');
 const bufferCanvas = document.createElement('canvas');
 const bufferCtx = bufferCanvas.getContext('2d', { willReadFrequently: true });
+const basePreviewCanvas = document.createElement('canvas');
+const basePreviewCtx = basePreviewCanvas.getContext('2d');
 const edgeCanvas = document.createElement('canvas');
 const edgeCtx = edgeCanvas.getContext('2d');
 const baseCanvas = document.createElement('canvas');
@@ -36,15 +39,43 @@ const aspectLockInput = document.getElementById('previewAspectLock');
 const zoomButtons = document.querySelectorAll('#previewZoom button');
 const pixelGridInput = document.getElementById('previewPixelGrid');
 const controlSliders = document.querySelectorAll('.controls input[type="range"], .controls input[type="number"]');
+const controlToggles = document.querySelectorAll('.controls input[type="checkbox"], .controls select');
 
 const radiusNumber = document.getElementById('radiusNumber');
 const radiusRange = document.getElementById('radiusRange');
 const sigmaColorNumber = document.getElementById('sigmaColorNumber');
 const sigmaColorRange = document.getElementById('sigmaColorRange');
+const smoothingModeInput = document.getElementById('smoothingMode');
+const chromaPresetInput = document.getElementById('chromaPreset');
 const lumaPreserveNumber = document.getElementById('lumaPreserveNumber');
 const lumaPreserveRange = document.getElementById('lumaPreserveRange');
 const chromaSmoothNumber = document.getElementById('chromaSmoothNumber');
 const chromaSmoothRange = document.getElementById('chromaSmoothRange');
+const chromaSmoothANumber = document.getElementById('chromaSmoothANumber');
+const chromaSmoothARange = document.getElementById('chromaSmoothARange');
+const chromaSmoothBNumber = document.getElementById('chromaSmoothBNumber');
+const chromaSmoothBRange = document.getElementById('chromaSmoothBRange');
+const chromaRadiusNumber = document.getElementById('chromaRadiusNumber');
+const chromaRadiusRange = document.getElementById('chromaRadiusRange');
+const chromaSigmaSpaceNumber = document.getElementById('chromaSigmaSpaceNumber');
+const chromaSigmaSpaceRange = document.getElementById('chromaSigmaSpaceRange');
+const chromaSigmaColorNumber = document.getElementById('chromaSigmaColorNumber');
+const chromaSigmaColorRange = document.getElementById('chromaSigmaColorRange');
+const chromaClampNumber = document.getElementById('chromaClampNumber');
+const chromaClampRange = document.getElementById('chromaClampRange');
+const neutralProtectNumber = document.getElementById('neutralProtectNumber');
+const neutralProtectRange = document.getElementById('neutralProtectRange');
+const lumaProtectNumber = document.getElementById('lumaProtectNumber');
+const lumaProtectRange = document.getElementById('lumaProtectRange');
+const adaptiveChromaNumber = document.getElementById('adaptiveChromaNumber');
+const adaptiveChromaRange = document.getElementById('adaptiveChromaRange');
+const protectSkinInput = document.getElementById('protectSkin');
+const artifactBoostNumber = document.getElementById('artifactBoostNumber');
+const artifactBoostRange = document.getElementById('artifactBoostRange');
+const previewModeInput = document.getElementById('previewMode');
+const previewSplitNumber = document.getElementById('previewSplitNumber');
+const previewSplitRange = document.getElementById('previewSplitRange');
+const previewABToggle = document.getElementById('previewABToggle');
 const paletteLevelsNumber = document.getElementById('paletteLevelsNumber');
 const paletteLevelsRange = document.getElementById('paletteLevelsRange');
 const neighborMergeNumber = document.getElementById('neighborMergeNumber');
@@ -70,6 +101,7 @@ let previewStale = false;
 let isRendering = false;
 let renderQueued = false;
 let baseReady = false;
+let previewABState = 'B';
 
 document.getElementById('upload').onchange = e => {
   const file = e.target.files[0];
@@ -96,6 +128,16 @@ bindRangeNumber(radiusRange, radiusNumber, handleSmoothingChange);
 bindRangeNumber(sigmaColorRange, sigmaColorNumber, handleSmoothingChange);
 bindRangeNumber(lumaPreserveRange, lumaPreserveNumber, handleSmoothingChange);
 bindRangeNumber(chromaSmoothRange, chromaSmoothNumber, handleSmoothingChange);
+bindRangeNumber(chromaSmoothARange, chromaSmoothANumber, handleSmoothingChange);
+bindRangeNumber(chromaSmoothBRange, chromaSmoothBNumber, handleSmoothingChange);
+bindRangeNumber(chromaRadiusRange, chromaRadiusNumber, handleSmoothingChange);
+bindRangeNumber(chromaSigmaSpaceRange, chromaSigmaSpaceNumber, handleSmoothingChange);
+bindRangeNumber(chromaSigmaColorRange, chromaSigmaColorNumber, handleSmoothingChange);
+bindRangeNumber(chromaClampRange, chromaClampNumber, handleSmoothingChange);
+bindRangeNumber(neutralProtectRange, neutralProtectNumber, handleSmoothingChange);
+bindRangeNumber(lumaProtectRange, lumaProtectNumber, handleSmoothingChange);
+bindRangeNumber(adaptiveChromaRange, adaptiveChromaNumber, handleSmoothingChange);
+bindRangeNumber(artifactBoostRange, artifactBoostNumber, handleSmoothingChange);
 bindRangeNumber(paletteLevelsRange, paletteLevelsNumber, handleSmoothingChange);
 bindRangeNumber(neighborMergeRange, neighborMergeNumber, handleSmoothingChange);
 bindRangeNumber(edgeStrengthRange, edgeStrengthNumber, handleSmoothingChange);
@@ -149,6 +191,30 @@ pixelGridInput.addEventListener('change', () => {
 
 edgeDetectInput.addEventListener('change', handleSmoothingChange);
 edgeOverlayInput.addEventListener('change', handleSmoothingChange);
+smoothingModeInput.addEventListener('change', () => {
+  toggleSmoothingModeControls();
+  handleSmoothingChange();
+});
+chromaPresetInput.addEventListener('change', e => {
+  applyChromaPreset(e.target.value);
+  handleSmoothingChange();
+});
+protectSkinInput.addEventListener('change', handleSmoothingChange);
+previewModeInput.addEventListener('change', handleSmoothingChange);
+previewModeInput.addEventListener('change', updatePreviewModeControls);
+previewSplitRange.addEventListener('input', () => {
+  previewSplitNumber.value = previewSplitRange.value;
+  handleSmoothingChange();
+});
+previewSplitNumber.addEventListener('input', () => {
+  previewSplitRange.value = previewSplitNumber.value;
+  handleSmoothingChange();
+});
+previewABToggle.addEventListener('click', () => {
+  previewABState = previewABState === 'A' ? 'B' : 'A';
+  updatePreviewABToggle();
+  handleSmoothingChange();
+});
 
 zoomButtons.forEach(button => {
   button.addEventListener('click', () => {
@@ -167,7 +233,16 @@ resetPreviewButton.addEventListener('click', () => {
 
 controlSliders.forEach(input => {
   if (input.id === 'previewWidth' || input.id === 'previewHeight') return;
+  if (input.id === 'previewSplitNumber' || input.id === 'previewSplitRange') return;
   input.addEventListener('input', handleSmoothingChange);
+});
+
+controlToggles.forEach(input => {
+  if (input === selectionMode || input === previewAutoSizeInput || input === aspectLockInput) return;
+  if (input === smoothingModeInput || input === chromaPresetInput || input === previewModeInput) return;
+  if (input === protectSkinInput || input === edgeDetectInput || input === edgeOverlayInput) return;
+  if (input.id === 'previewPixelGrid') return;
+  input.addEventListener('change', handleSmoothingChange);
 });
 
 applyFullButton.addEventListener('click', () => {
@@ -176,6 +251,7 @@ applyFullButton.addEventListener('click', () => {
   setTimeout(() => {
     const img = getBaseImageData(0, 0, fullCanvas.width, fullCanvas.height);
     const options = getSmoothingOptions();
+    options.artifactBoost = 0;
     let smoothed = smoothRegion(img, options);
 
     const needsEdges = options.edgeDetect || options.edgeSoften > 0;
@@ -216,6 +292,9 @@ initPreviewSelector({
 
 setPreviewZoom(1);
 toggleFixedInputs();
+toggleSmoothingModeControls();
+updatePreviewABToggle();
+updatePreviewModeControls();
 setPreviewActive(false);
 setPreviewStale(false);
 
@@ -265,12 +344,26 @@ function handleSmoothingChange() {
 
 function getSmoothingOptions() {
   return {
+    smoothingMode: smoothingModeInput.value,
     radius: clamp(parseInt(radiusNumber.value, 10) || 3, 1, 12),
     sigmaColor: clamp(parseInt(sigmaColorNumber.value, 10) || 30, 1, 200),
     sigmaSpace: 4,
     quant: 0,
     lumaPreserve: clamp(parseInt(lumaPreserveNumber.value, 10) || 85, 0, 100) / 100,
     chromaSmooth: clamp(parseInt(chromaSmoothNumber.value, 10) || 0, 0, 100) / 100,
+    chromaSmoothA: clamp(parseInt(chromaSmoothANumber.value, 10) || 100, 0, 100) / 100,
+    chromaSmoothB: clamp(parseInt(chromaSmoothBNumber.value, 10) || 100, 0, 100) / 100,
+    chromaRadius: clamp(parseInt(chromaRadiusNumber.value, 10) || 2, 1, 8),
+    chromaSigmaSpace: clamp(parseFloat(chromaSigmaSpaceNumber.value) || 3, 0.5, 12),
+    chromaSigmaColor: clamp(parseInt(chromaSigmaColorNumber.value, 10) || 26, 1, 80),
+    chromaClamp: clamp(parseInt(chromaClampNumber.value, 10) || 0, 0, 100) / 100,
+    neutralProtect: clamp(parseInt(neutralProtectNumber.value, 10) || 0, 0, 100) / 100,
+    lumaProtect: clamp(parseInt(lumaProtectNumber.value, 10) || 0, 0, 100) / 100,
+    adaptiveChroma: clamp(parseInt(adaptiveChromaNumber.value, 10) || 0, 0, 100) / 100,
+    protectSkin: !!protectSkinInput.checked,
+    artifactBoost: clamp(parseInt(artifactBoostNumber.value, 10) || 0, 0, 100) / 100,
+    previewMode: previewModeInput.value,
+    previewSplit: clamp(parseInt(previewSplitNumber.value, 10) || 50, 0, 100) / 100,
     paletteLevels: clamp(parseInt(paletteLevelsNumber.value, 10) || 0, 0, 32),
     neighborMerge: clamp(parseInt(neighborMergeNumber.value, 10) || 0, 0, 100) / 100,
     edgeDetect: !!edgeDetectInput.checked,
@@ -364,6 +457,101 @@ function toggleFixedInputs() {
   aspectLockInput.disabled = selectionMode.value !== 'drag';
 }
 
+function toggleSmoothingModeControls() {
+  const isLab = smoothingModeInput.value !== 'rgb';
+  document.querySelectorAll('[data-mode="rgb"] input, [data-mode="rgb"] select').forEach(el => {
+    el.disabled = isLab;
+  });
+  document.querySelectorAll('[data-mode="lab"] input, [data-mode="lab"] select').forEach(el => {
+    el.disabled = !isLab;
+  });
+  chromaPresetInput.disabled = !isLab;
+  protectSkinInput.disabled = !isLab;
+}
+
+function updatePreviewModeControls() {
+  const isSplit = previewModeInput.value === 'split';
+  const isAB = previewModeInput.value === 'ab';
+  previewSplitNumber.disabled = !isSplit;
+  previewSplitRange.disabled = !isSplit;
+  previewABToggle.disabled = !isAB;
+  updatePreviewABToggle();
+}
+
+function updatePreviewABToggle() {
+  if (!previewABToggle) return;
+  previewABToggle.textContent = previewABState === 'A' ? 'Show B' : 'Show A';
+}
+
+function setRangeNumberValue(rangeInput, numberInput, value) {
+  rangeInput.value = value;
+  numberInput.value = value;
+}
+
+function applyChromaPreset(preset) {
+  smoothingModeInput.value = 'lab';
+  toggleSmoothingModeControls();
+  const presets = {
+    subtle: {
+      lumaPreserve: 92,
+      chromaSmooth: 35,
+      chromaSmoothA: 100,
+      chromaSmoothB: 100,
+      chromaRadius: 2,
+      chromaSigmaSpace: 2.5,
+      chromaSigmaColor: 18,
+      chromaClamp: 60,
+      neutralProtect: 60,
+      lumaProtect: 55,
+      adaptiveChroma: 55,
+      protectSkin: true
+    },
+    balanced: {
+      lumaPreserve: 85,
+      chromaSmooth: 60,
+      chromaSmoothA: 100,
+      chromaSmoothB: 100,
+      chromaRadius: 3,
+      chromaSigmaSpace: 3,
+      chromaSigmaColor: 26,
+      chromaClamp: 45,
+      neutralProtect: 45,
+      lumaProtect: 35,
+      adaptiveChroma: 40,
+      protectSkin: true
+    },
+    aggressive: {
+      lumaPreserve: 75,
+      chromaSmooth: 85,
+      chromaSmoothA: 100,
+      chromaSmoothB: 100,
+      chromaRadius: 4,
+      chromaSigmaSpace: 4,
+      chromaSigmaColor: 36,
+      chromaClamp: 30,
+      neutralProtect: 30,
+      lumaProtect: 20,
+      adaptiveChroma: 25,
+      protectSkin: true
+    }
+  };
+
+  if (!presets[preset]) return;
+  const values = presets[preset];
+  setRangeNumberValue(lumaPreserveRange, lumaPreserveNumber, values.lumaPreserve);
+  setRangeNumberValue(chromaSmoothRange, chromaSmoothNumber, values.chromaSmooth);
+  setRangeNumberValue(chromaSmoothARange, chromaSmoothANumber, values.chromaSmoothA);
+  setRangeNumberValue(chromaSmoothBRange, chromaSmoothBNumber, values.chromaSmoothB);
+  setRangeNumberValue(chromaRadiusRange, chromaRadiusNumber, values.chromaRadius);
+  setRangeNumberValue(chromaSigmaSpaceRange, chromaSigmaSpaceNumber, values.chromaSigmaSpace);
+  setRangeNumberValue(chromaSigmaColorRange, chromaSigmaColorNumber, values.chromaSigmaColor);
+  setRangeNumberValue(chromaClampRange, chromaClampNumber, values.chromaClamp);
+  setRangeNumberValue(neutralProtectRange, neutralProtectNumber, values.neutralProtect);
+  setRangeNumberValue(lumaProtectRange, lumaProtectNumber, values.lumaProtect);
+  setRangeNumberValue(adaptiveChromaRange, adaptiveChromaNumber, values.adaptiveChroma);
+  protectSkinInput.checked = values.protectSkin;
+}
+
 function schedulePreviewRender() {
   if (!previewRegion || isRendering) {
     renderQueued = renderQueued || !!previewRegion;
@@ -402,9 +590,18 @@ function renderPreview() {
     smoothed = softenEdges(smoothed, edgeMap, options.edgeSoften);
   }
 
+  const previewMode = options.previewMode || 'result';
+  const displayResult = options.artifactBoost > 0
+    ? boostChromaArtifacts(imgData, smoothed, options)
+    : smoothed;
+
+  basePreviewCanvas.width = w;
+  basePreviewCanvas.height = h;
+  basePreviewCtx.putImageData(imgData, 0, 0);
+
   bufferCanvas.width = w;
   bufferCanvas.height = h;
-  bufferCtx.putImageData(smoothed, 0, 0);
+  bufferCtx.putImageData(displayResult, 0, 0);
 
   const displayWidth = previewCanvasWrap.clientWidth || 1;
   const displayHeight = previewCanvasWrap.clientHeight || 1;
@@ -427,7 +624,32 @@ function renderPreview() {
 
   previewCanvas.style.width = `${scaledW}px`;
   previewCanvas.style.height = `${scaledH}px`;
-  previewCtx.drawImage(bufferCanvas, 0, 0, scaledW, scaledH);
+  if (previewMode === 'split') {
+    const splitX = Math.round(scaledW * clamp(options.previewSplit ?? 0.5, 0, 1));
+    previewCtx.drawImage(basePreviewCanvas, 0, 0, scaledW, scaledH);
+    previewCtx.save();
+    previewCtx.beginPath();
+    previewCtx.rect(splitX, 0, scaledW - splitX, scaledH);
+    previewCtx.clip();
+    previewCtx.drawImage(bufferCanvas, 0, 0, scaledW, scaledH);
+    previewCtx.restore();
+    previewCtx.save();
+    previewCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+    previewCtx.lineWidth = 1;
+    previewCtx.beginPath();
+    previewCtx.moveTo(splitX + 0.5, 0);
+    previewCtx.lineTo(splitX + 0.5, scaledH);
+    previewCtx.stroke();
+    previewCtx.restore();
+  } else if (previewMode === 'ab') {
+    if (previewABState === 'A') {
+      previewCtx.drawImage(basePreviewCanvas, 0, 0, scaledW, scaledH);
+    } else {
+      previewCtx.drawImage(bufferCanvas, 0, 0, scaledW, scaledH);
+    }
+  } else {
+    previewCtx.drawImage(bufferCanvas, 0, 0, scaledW, scaledH);
+  }
 
   if (edgeMap && options.edgeOverlay) {
     edgeCanvas.width = w;

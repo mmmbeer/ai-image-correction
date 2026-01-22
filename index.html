@@ -376,6 +376,36 @@
             <input type="checkbox" id="previewPixelGrid">
             <small>Available at 2x and 4x zoom.</small>
           </div>
+
+          <div class="control">
+            <label>Preview Mode</label>
+            <select id="previewMode" class="form-select">
+              <option value="result">Result</option>
+              <option value="split">Before/After Split</option>
+              <option value="ab">A/B Toggle</option>
+            </select>
+            <small>Compare the processed preview against the original.</small>
+          </div>
+
+          <div class="control">
+            <label>Split Position</label>
+            <input type="number" id="previewSplitNumber" value="50" min="0" max="100">
+            <input type="range" id="previewSplitRange" min="0" max="100" step="1" value="50">
+            <small>Only used in split mode.</small>
+          </div>
+
+          <div class="control">
+            <label>A/B Toggle</label>
+            <button class="btn btn-ghost btn-small" id="previewABToggle" type="button">Show A</button>
+            <small>Switch between original (A) and processed (B).</small>
+          </div>
+
+          <div class="control">
+            <label>Artifact Boost</label>
+            <input type="number" id="artifactBoostNumber" value="0" min="0" max="100">
+            <input type="range" id="artifactBoostRange" min="0" max="100" step="1" value="0">
+            <small>Preview-only exaggeration of chroma noise.</small>
+          </div>
         </div>
 
         <!-- COLOR SMOOTHING -->
@@ -383,13 +413,22 @@
           <h4>Color Smoothing</h4>
 
           <div class="control">
+            <label>Smoothing Mode</label>
+            <select id="smoothingMode" class="form-select">
+              <option value="lab" selected>LAB Chroma</option>
+              <option value="rgb">RGB Bilateral</option>
+            </select>
+            <small>Choose LAB chroma-only smoothing or RGB bilateral.</small>
+          </div>
+
+          <div class="control" data-mode="rgb">
             <label>Bilateral Radius</label>
             <input type="number" id="radiusNumber" value="3" min="1" max="12">
             <input type="range" id="radiusRange" min="1" max="12" step="1" value="3">
             <small>Spatial neighborhood size. Higher values flatten larger regions.</small>
           </div>
 
-          <div class="control">
+          <div class="control" data-mode="rgb">
             <label>Color Sigma</label>
             <input type="number" id="sigmaColorNumber" value="30" min="5" max="200">
             <input type="range" id="sigmaColorRange" min="5" max="200" step="1" value="30">
@@ -401,18 +440,97 @@
         <div class="control-group">
           <h4>Channel Control (LAB)</h4>
 
-          <div class="control">
+          <div class="control" data-mode="lab">
+            <label>Preset Tier</label>
+            <select id="chromaPreset" class="form-select">
+              <option value="subtle">Subtle</option>
+              <option value="balanced" selected>Balanced</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+            <small>Safe starting points for chroma smoothing.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
             <label>Luminance Preserve</label>
             <input type="number" id="lumaPreserveNumber" value="85" min="0" max="100">
             <input type="range" id="lumaPreserveRange" min="0" max="100" step="1" value="85">
             <small>Preserve perceived detail. Reduce only if flattening shapes.</small>
           </div>
 
-          <div class="control">
+          <div class="control" data-mode="lab">
             <label>Chroma Smooth</label>
             <input type="number" id="chromaSmoothNumber" value="60" min="0" max="100">
             <input type="range" id="chromaSmoothRange" min="0" max="100" step="1" value="60">
             <small>Primary control for removing painterly color noise.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Chroma A Strength</label>
+            <input type="number" id="chromaSmoothANumber" value="100" min="0" max="100">
+            <input type="range" id="chromaSmoothARange" min="0" max="100" step="1" value="100">
+            <small>Fine-tune smoothing on the A channel.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Chroma B Strength</label>
+            <input type="number" id="chromaSmoothBNumber" value="100" min="0" max="100">
+            <input type="range" id="chromaSmoothBRange" min="0" max="100" step="1" value="100">
+            <small>Fine-tune smoothing on the B channel.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Chroma Radius</label>
+            <input type="number" id="chromaRadiusNumber" value="3" min="1" max="8">
+            <input type="range" id="chromaRadiusRange" min="1" max="8" step="1" value="3">
+            <small>Spatial radius for LAB chroma smoothing.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Chroma Spatial Sigma</label>
+            <input type="number" id="chromaSigmaSpaceNumber" value="3" min="0.5" max="12" step="0.1">
+            <input type="range" id="chromaSigmaSpaceRange" min="0.5" max="12" step="0.1" value="3">
+            <small>Controls spatial falloff in LAB mode.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Chroma Range Sigma</label>
+            <input type="number" id="chromaSigmaColorNumber" value="26" min="1" max="80">
+            <input type="range" id="chromaSigmaColorRange" min="1" max="80" step="1" value="26">
+            <small>Controls chroma similarity blending in LAB.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Chroma Clamp</label>
+            <input type="number" id="chromaClampNumber" value="45" min="0" max="100">
+            <input type="range" id="chromaClampRange" min="0" max="100" step="1" value="45">
+            <small>Limits hue drift and saturation collapse.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Neutral Protection</label>
+            <input type="number" id="neutralProtectNumber" value="45" min="0" max="100">
+            <input type="range" id="neutralProtectRange" min="0" max="100" step="1" value="45">
+            <small>Reduces chroma shifts in low-saturation areas.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Highlight/Shadow Protect</label>
+            <input type="number" id="lumaProtectNumber" value="35" min="0" max="100">
+            <input type="range" id="lumaProtectRange" min="0" max="100" step="1" value="35">
+            <small>Preserves delicate highlights and shadows.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Adaptive Chroma</label>
+            <input type="number" id="adaptiveChromaNumber" value="40" min="0" max="100">
+            <input type="range" id="adaptiveChromaRange" min="0" max="100" step="1" value="40">
+            <small>Responds to local chroma variance.</small>
+          </div>
+
+          <div class="control" data-mode="lab">
+            <label>Protect Skin Tones</label>
+            <input type="checkbox" id="protectSkin" checked>
+            <small>Reduces smoothing in common skin hue ranges.</small>
           </div>
         </div>
 

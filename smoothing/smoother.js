@@ -4,9 +4,14 @@ import { smoothChroma } from './chroma.js';
 import { simplifyPalette } from './palette.js';
 
 export function smoothRegion(imgData, opts) {
-  let out = bilateralFilter(imgData, opts);
+  const mode = opts.smoothingMode || 'lab';
+  let out = imgData;
 
-  if (opts.chromaSmooth > 0) {
+  if (mode === 'rgb') {
+    out = bilateralFilter(imgData, opts);
+  }
+
+  if (mode !== 'rgb' && opts.chromaSmooth > 0) {
     out = smoothChroma(out, imgData, opts);
   }
 
