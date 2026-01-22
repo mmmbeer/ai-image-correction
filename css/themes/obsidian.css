@@ -1,0 +1,21 @@
+/* css/themes/obsidian.css */
+
+:root {
+  --color-bg-main: #0e0f12;
+  --color-bg-panel: #15171c;
+  --color-bg-elevated: #1b1e25;
+
+  --color-border: #2a2f3a;
+  --color-border-strong: #3b4150;
+
+  --color-text-main: #e6e9ef;
+  --color-text-muted: #9aa1b2;
+  --color-text-dim: #6b7280;
+
+  --color-accent: #00d1ff;
+  --color-accent-strong: #00f0ff;
+
+  --color-danger: #ff3b3b;
+  --color-warning: #ffb020;
+  --color-success: #1ee08a;
+}

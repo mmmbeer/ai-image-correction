@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Color Smoothing Tool</title>
+
+<link rel="stylesheet" href="css/main.css">
+
+<style>
+/* Layout-specific additions */
+
+.app {
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--color-bg-panel);
+  border-bottom: var(--border-hard);
+}
+
+.header label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 16px;
+  padding: 16px;
+}
+
+.full-image {
+  position: relative;
+  background: #000;
+  border: 2px solid var(--color-border-strong);
+}
+
+.preview-box {
+  position: absolute;
+  border: 2px dashed var(--color-accent);
+  background: rgba(0, 209, 255, 0.08);
+  pointer-events: none;
+}
+
+.preview-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
+}
+
+.preview-canvas {
+  border: var(--border-hard);
+  background: #000;
+}
+
+.controls {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.control-group {
+  margin-bottom: 16px;
+}
+
+.control-group h4 {
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  color: var(--color-text-muted);
+}
+
+.control {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.control small {
+  grid-column: 1 / -1;
+  color: var(--color-text-dim);
+  font-size: var(--text-xs);
+}
+
+.control input[type="number"] {
+  width: 64px;
+}
+
+.apply {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <label>File:</label>
+    <input type="file" id="upload" class="form-control form-control-sm">
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- FULL IMAGE -->
+    <div class="full-image">
+      <canvas id="fullCanvas"></canvas>
+      <div class="preview-box" id="previewBox"></div>
+    </div>
+
+    <!-- PREVIEW + CONTROLS -->
+    <div class="preview-panel">
+
+      <canvas id="previewCanvas" class="preview-canvas"></canvas>
+
+      <div class="controls">
+
+        <!-- COLOR SMOOTHING -->
+        <div class="control-group">
+          <h4>Color Smoothing</h4>
+
+          <div class="control">
+            <label>Bilateral Radius</label>
+            <input type="number" value="3">
+            <input type="range" min="1" max="6" step="1">
+            <small>Spatial neighborhood size. Higher values flatten larger regions.</small>
+          </div>
+
+          <div class="control">
+            <label>Color Sigma</label>
+            <input type="number" value="30">
+            <input type="range" min="5" max="80" step="1">
+            <small>Controls how aggressively color differences are blended.</small>
+          </div>
+        </div>
+
+        <!-- CHANNEL CONTROLS -->
+        <div class="control-group">
+          <h4>Channel Control (LAB)</h4>
+
+          <div class="control">
+            <label>Luminance Preserve</label>
+            <input type="number" value="100">
+            <input type="range" min="0" max="100" step="1">
+            <small>Preserve perceived detail. Reduce only if flattening shapes.</small>
+          </div>
+
+          <div class="control">
+            <label>Chroma Smooth</label>
+            <input type="number" value="60">
+            <input type="range" min="0" max="100" step="1">
+            <small>Primary control for removing painterly color noise.</small>
+          </div>
+        </div>
+
+        <!-- EDGE TOOLS -->
+        <div class="control-group">
+          <h4>Edge Tools</h4>
+
+          <div class="control">
+            <label>Edge Detection</label>
+            <input type="checkbox">
+            <small>Detects high-contrast boundaries for protection or overlay.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Preserve Strength</label>
+            <input type="number" value="80">
+            <input type="range" min="0" max="100" step="1">
+            <small>Prevents smoothing across strong edges.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Overlay</label>
+            <input type="checkbox">
+            <small>Visualize detected edges on preview.</small>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="apply">
+        <button class="btn">Reset Preview</button>
+        <button class="btn btn-primary">Apply to Full Image</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

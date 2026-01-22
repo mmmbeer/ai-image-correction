@@ -1,0 +1,153 @@
+/* css/main.css */
+
+@import "./variables.css";
+@import "./themes.css";
+
+/* Global reset */
+html, body {
+  background: var(--color-bg-main);
+  color: var(--color-text-main);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+}
+
+/* Bootstrap overrides (minimal, deliberate) */
+.btn {
+  border-radius: var(--radius-sm);
+  border: var(--border-hard);
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-elevated),
+    var(--color-bg-panel)
+  );
+  color: var(--color-text-main);
+  transition: var(--transition-fast);
+}
+
+.btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent),
+    var(--color-accent-strong)
+  );
+  color: #000;
+  border: none;
+}
+
+/* Panels */
+.panel {
+  background: var(--color-bg-panel);
+  border: var(--border-hard);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hard-sm);
+  padding: var(--space-4);
+}
+
+/* Canvas container */
+.canvas-frame {
+  background: #000;
+  border: 2px solid var(--color-border-strong);
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+/* Modals */
+.modal-content {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  border: var(--border-hard);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: var(--color-border);
+}
+
+.modal-title {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Form fields */
+.form-control,
+.form-select {
+  background: var(--color-bg-panel);
+  color: var(--color-text-main);
+  border: var(--border-hard);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+/* Range sliders */
+input[type="range"] {
+  appearance: none;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent);
+  border: 2px solid #000;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* Inspector groups */
+fieldset {
+  border: var(--border-hard);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+legend {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+/* Status indicators */
+.badge {
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+}
+
+.badge-success {
+  background: var(--color-success);
+  color: #000;
+}
+
+.badge-danger {
+  background: var(--color-danger);
+}
+
+/* Utility */
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.hr-hard {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-border),
+    transparent
+  );
+}
