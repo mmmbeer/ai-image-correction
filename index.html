@@ -35,6 +35,7 @@
   gap: 16px;
   padding: 16px;
   height: calc(100vh - 48px);
+  overflow: hidden;
 }
 
 .full-image {
@@ -42,6 +43,15 @@
   background: #000;
   border: 2px solid var(--color-border-strong);
   cursor: crosshair;
+  height: 100%;
+  overflow: hidden;
+}
+
+.full-image canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .preview-box {
@@ -70,9 +80,6 @@
 }
 
 .preview-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   background: var(--color-bg-main);
   padding-bottom: 8px;
 }
@@ -394,4 +401,3 @@
 <script type="module" src="app.js"></script>
 </body>
 </html>
-
