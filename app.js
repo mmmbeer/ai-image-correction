@@ -6,6 +6,7 @@ import { clamp } from './utils/math.js';
 const fullCanvas = document.getElementById('fullCanvas');
 const previewCanvas = document.getElementById('previewCanvas');
 const previewBox = document.getElementById('previewBox');
+const activePreviewBox = document.getElementById('activePreviewBox');
 
 const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
 const previewCtx = previewCanvas.getContext('2d');
@@ -46,6 +47,7 @@ document.getElementById('upload').onchange = e => {
     setPreviewActive(false);
     setPreviewStale(false);
     previewMeta.textContent = 'No selection';
+    updateActivePreviewBox();
     syncPreviewSizeToImage();
   });
 };
@@ -76,6 +78,7 @@ resetPreviewButton.addEventListener('click', () => {
   setPreviewActive(false);
   setPreviewStale(false);
   previewMeta.textContent = 'No selection';
+  updateActivePreviewBox();
 });
 
 applyFullButton.addEventListener('click', () => {
@@ -102,6 +105,7 @@ initPreviewSelector({
   },
   onSelect: region => {
     previewRegion = region;
+    updateActivePreviewBox();
     renderPreview();
   }
 });
@@ -110,6 +114,11 @@ setPreviewZoom(1);
 toggleFixedInputs();
 setPreviewActive(false);
 setPreviewStale(false);
+
+window.addEventListener('resize', () => {
+  updateActivePreviewBox();
+  if (previewRegion) renderPreview();
+});
 
 function bindRangeNumber(rangeInput, numberInput, onChange) {
   rangeInput.addEventListener('input', () => {
@@ -183,14 +192,33 @@ function renderPreview() {
   bufferCanvas.height = h;
   bufferCtx.putImageData(smoothed, 0, 0);
 
-  previewCanvas.width = w * previewZoom;
-  previewCanvas.height = h * previewZoom;
-  previewCtx.imageSmoothingEnabled = false;
-  previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-  previewCtx.drawImage(bufferCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+  const displayWidth = previewCanvas.clientWidth || 1;
+  const displayHeight = previewCanvas.clientHeight || 1;
+  const dpr = window.devicePixelRatio || 1;
+  const targetWidth = Math.max(1, Math.floor(displayWidth * dpr));
+  const targetHeight = Math.max(1, Math.floor(displayHeight * dpr));
 
-  if (pixelGridInput.checked && previewZoom >= 2) {
-    drawPixelGrid(previewCtx, previewCanvas.width, previewCanvas.height, previewZoom);
+  if (previewCanvas.width !== targetWidth || previewCanvas.height !== targetHeight) {
+    previewCanvas.width = targetWidth;
+    previewCanvas.height = targetHeight;
+  }
+
+  previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  previewCtx.imageSmoothingEnabled = false;
+  previewCtx.clearRect(0, 0, displayWidth, displayHeight);
+
+  const baseScale = Math.min(displayWidth / w, displayHeight / h);
+  const scale = baseScale * previewZoom;
+  const drawW = w * scale;
+  const drawH = h * scale;
+  const offsetX = Math.max(0, (displayWidth - drawW) / 2);
+  const offsetY = Math.max(0, (displayHeight - drawH) / 2);
+
+  previewCtx.drawImage(bufferCanvas, offsetX, offsetY, drawW, drawH);
+
+  const gridScale = scale;
+  if (pixelGridInput.checked && gridScale >= 2) {
+    drawPixelGrid(previewCtx, displayWidth, displayHeight, gridScale, offsetX, offsetY, drawW, drawH);
   }
 
   previewMeta.textContent = `${formatRegion(previewRegion)} | ${previewZoom}x`;
@@ -198,19 +226,24 @@ function renderPreview() {
   setPreviewStale(false);
 }
 
-function drawPixelGrid(ctx, width, height, zoom) {
+function drawPixelGrid(ctx, width, height, zoom, offsetX, offsetY, drawW, drawH) {
   ctx.save();
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
 
-  for (let x = 0; x <= width; x += zoom) {
-    ctx.moveTo(x + 0.5, 0);
-    ctx.lineTo(x + 0.5, height);
+  const startX = offsetX;
+  const startY = offsetY;
+  const endX = offsetX + drawW;
+  const endY = offsetY + drawH;
+
+  for (let x = startX; x <= endX; x += zoom) {
+    ctx.moveTo(x + 0.5, startY);
+    ctx.lineTo(x + 0.5, endY);
   }
-  for (let y = 0; y <= height; y += zoom) {
-    ctx.moveTo(0, y + 0.5);
-    ctx.lineTo(width, y + 0.5);
+  for (let y = startY; y <= endY; y += zoom) {
+    ctx.moveTo(startX, y + 0.5);
+    ctx.lineTo(endX, y + 0.5);
   }
 
   ctx.stroke();
@@ -240,4 +273,21 @@ function setPreviewActive(active) {
 function setPreviewStale(stale) {
   previewStale = stale;
   previewStaleBadge.style.display = stale && previewRegion ? 'inline-flex' : 'none';
+}
+
+function updateActivePreviewBox() {
+  if (!previewRegion) {
+    activePreviewBox.style.display = 'none';
+    return;
+  }
+
+  const rect = fullCanvas.getBoundingClientRect();
+  const scaleX = rect.width ? rect.width / fullCanvas.width : 1;
+  const scaleY = rect.height ? rect.height / fullCanvas.height : 1;
+
+  activePreviewBox.style.display = 'block';
+  activePreviewBox.style.left = `${previewRegion.x * scaleX}px`;
+  activePreviewBox.style.top = `${previewRegion.y * scaleY}px`;
+  activePreviewBox.style.width = `${previewRegion.w * scaleX}px`;
+  activePreviewBox.style.height = `${previewRegion.h * scaleY}px`;
 }

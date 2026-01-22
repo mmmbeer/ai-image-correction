@@ -71,6 +71,7 @@ The system prioritizes:
 * **Complete:** Click-to-load preview region into a separate preview canvas (full image remains unchanged)
 * **Complete:** Preview zoom controls (1×, 2×, 4×) with pixel grid toggle at higher zoom
 * **Complete:** Preview state indicators (active/stale) and region metadata display
+* **Complete:** Sticky preview header/canvas with scrollable controls; active region frame persists on full image
 
 ---
 
