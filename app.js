@@ -2,6 +2,7 @@ import { loadImage } from './imageLoader.js';
 import { initPreviewSelector } from './previewSelector.js';
 import { smoothRegion } from './smoothing/smoother.js';
 import { detectEdges, edgeMapToImageData } from './smoothing/edges.js';
+import { softenEdges } from './smoothing/edgeSoften.js';
 import { clamp } from './utils/math.js';
 
 const fullCanvas = document.getElementById('fullCanvas');
@@ -38,6 +39,14 @@ const radiusNumber = document.getElementById('radiusNumber');
 const radiusRange = document.getElementById('radiusRange');
 const sigmaColorNumber = document.getElementById('sigmaColorNumber');
 const sigmaColorRange = document.getElementById('sigmaColorRange');
+const lumaPreserveNumber = document.getElementById('lumaPreserveNumber');
+const lumaPreserveRange = document.getElementById('lumaPreserveRange');
+const chromaSmoothNumber = document.getElementById('chromaSmoothNumber');
+const chromaSmoothRange = document.getElementById('chromaSmoothRange');
+const paletteLevelsNumber = document.getElementById('paletteLevelsNumber');
+const paletteLevelsRange = document.getElementById('paletteLevelsRange');
+const neighborMergeNumber = document.getElementById('neighborMergeNumber');
+const neighborMergeRange = document.getElementById('neighborMergeRange');
 
 const edgeDetectInput = document.getElementById('edgeDetect');
 const edgeOverlayInput = document.getElementById('edgeOverlay');
@@ -45,6 +54,8 @@ const edgeStrengthNumber = document.getElementById('edgeStrengthNumber');
 const edgeStrengthRange = document.getElementById('edgeStrengthRange');
 const edgeSmoothNumber = document.getElementById('edgeSmoothNumber');
 const edgeSmoothRange = document.getElementById('edgeSmoothRange');
+const edgeSoftenNumber = document.getElementById('edgeSoftenNumber');
+const edgeSoftenRange = document.getElementById('edgeSoftenRange');
 
 const resetPreviewButton = document.getElementById('resetPreview');
 const applyFullButton = document.getElementById('applyFull');
@@ -78,8 +89,13 @@ document.getElementById('upload').onchange = e => {
 
 bindRangeNumber(radiusRange, radiusNumber, handleSmoothingChange);
 bindRangeNumber(sigmaColorRange, sigmaColorNumber, handleSmoothingChange);
+bindRangeNumber(lumaPreserveRange, lumaPreserveNumber, handleSmoothingChange);
+bindRangeNumber(chromaSmoothRange, chromaSmoothNumber, handleSmoothingChange);
+bindRangeNumber(paletteLevelsRange, paletteLevelsNumber, handleSmoothingChange);
+bindRangeNumber(neighborMergeRange, neighborMergeNumber, handleSmoothingChange);
 bindRangeNumber(edgeStrengthRange, edgeStrengthNumber, handleSmoothingChange);
 bindRangeNumber(edgeSmoothRange, edgeSmoothNumber, handleSmoothingChange);
+bindRangeNumber(edgeSoftenRange, edgeSoftenNumber, handleSmoothingChange);
 
 previewSettingsToggle.addEventListener('click', e => {
   e.stopPropagation();
@@ -141,9 +157,13 @@ applyFullButton.addEventListener('click', () => {
     const options = getSmoothingOptions();
     let smoothed = smoothRegion(img, options);
 
-    if (options.edgeDetect && options.edgePreserve > 0) {
-      const edgeMap = detectEdges(img, { smooth: options.edgeSmooth });
+    const needsEdges = options.edgeDetect || options.edgeSoften > 0;
+    const edgeMap = needsEdges ? detectEdges(img, { smooth: options.edgeSmooth }) : null;
+    if (edgeMap && options.edgePreserve > 0) {
       smoothed = applyEdgePreserve(img, smoothed, edgeMap, options.edgePreserve);
+    }
+    if (edgeMap && options.edgeSoften > 0) {
+      smoothed = softenEdges(smoothed, edgeMap, options.edgeSoften);
     }
 
     fullCtx.putImageData(smoothed, 0, 0);
@@ -225,10 +245,15 @@ function getSmoothingOptions() {
     sigmaColor: clamp(parseInt(sigmaColorNumber.value, 10) || 30, 1, 200),
     sigmaSpace: 4,
     quant: 0,
+    lumaPreserve: clamp(parseInt(lumaPreserveNumber.value, 10) || 85, 0, 100) / 100,
+    chromaSmooth: clamp(parseInt(chromaSmoothNumber.value, 10) || 0, 0, 100) / 100,
+    paletteLevels: clamp(parseInt(paletteLevelsNumber.value, 10) || 0, 0, 32),
+    neighborMerge: clamp(parseInt(neighborMergeNumber.value, 10) || 0, 0, 100) / 100,
     edgeDetect: !!edgeDetectInput.checked,
     edgeOverlay: !!edgeOverlayInput.checked,
     edgePreserve: clamp(parseInt(edgeStrengthNumber.value, 10) || 0, 0, 100) / 100,
-    edgeSmooth: clamp(parseInt(edgeSmoothNumber.value, 10) || 0, 0, 3)
+    edgeSmooth: clamp(parseInt(edgeSmoothNumber.value, 10) || 0, 0, 3),
+    edgeSoften: clamp(parseInt(edgeSoftenNumber.value, 10) || 0, 0, 100) / 100
   };
 }
 
@@ -313,11 +338,14 @@ function renderPreview() {
   let smoothed = smoothRegion(imgData, options);
   let edgeMap = null;
 
-  if (options.edgeDetect) {
+  if (options.edgeDetect || options.edgeSoften > 0) {
     edgeMap = detectEdges(imgData, { smooth: options.edgeSmooth });
     if (options.edgePreserve > 0) {
       smoothed = applyEdgePreserve(imgData, smoothed, edgeMap, options.edgePreserve);
     }
+  }
+  if (edgeMap && options.edgeSoften > 0) {
+    smoothed = softenEdges(smoothed, edgeMap, options.edgeSoften);
   }
 
   bufferCanvas.width = w;

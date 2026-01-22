@@ -1,5 +1,6 @@
 export function quantize(img, levels) {
-  const step = 255 / levels;
+  const safeLevels = Math.max(2, Math.floor(levels));
+  const step = 255 / (safeLevels - 1);
   const d = img.data;
 
   for (let i=0;i<d.length;i+=4) {
