@@ -35,7 +35,7 @@ export function initPreviewSelector({
       return;
     }
 
-    const size = lastSize || getFixedSize();
+    const size = mode === 'fixed' ? getFixedSize() : (lastSize || getFixedSize());
     const region = clampRegion(buildHoverRegion(pos, size), canvas.width, canvas.height);
     lastHover = region;
     showBox(region);

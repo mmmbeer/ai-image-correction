@@ -1,6 +1,7 @@
 import { loadImage } from './imageLoader.js';
 import { initPreviewSelector } from './previewSelector.js';
 import { smoothRegion } from './smoothing/smoother.js';
+import { detectEdges, edgeMapToImageData } from './smoothing/edges.js';
 import { clamp } from './utils/math.js';
 
 const fullCanvas = document.getElementById('fullCanvas');
@@ -12,13 +13,18 @@ const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
 const previewCtx = previewCanvas.getContext('2d');
 const bufferCanvas = document.createElement('canvas');
 const bufferCtx = bufferCanvas.getContext('2d', { willReadFrequently: true });
+const edgeCanvas = document.createElement('canvas');
+const edgeCtx = edgeCanvas.getContext('2d');
 
 const previewPanel = document.querySelector('.preview-panel');
 const previewActiveBadge = document.getElementById('previewActiveBadge');
 const previewStaleBadge = document.getElementById('previewStaleBadge');
 const previewSizeTag = document.getElementById('previewSizeTag');
+const previewSettingsToggle = document.getElementById('previewSettingsToggle');
+const previewSettings = document.getElementById('previewSettings');
 
 const selectionMode = document.getElementById('selectionMode');
+const previewAutoSizeInput = document.getElementById('previewAutoSize');
 const previewWidthInput = document.getElementById('previewWidth');
 const previewHeightInput = document.getElementById('previewHeight');
 const aspectLockInput = document.getElementById('previewAspectLock');
@@ -30,6 +36,13 @@ const radiusNumber = document.getElementById('radiusNumber');
 const radiusRange = document.getElementById('radiusRange');
 const sigmaColorNumber = document.getElementById('sigmaColorNumber');
 const sigmaColorRange = document.getElementById('sigmaColorRange');
+
+const edgeDetectInput = document.getElementById('edgeDetect');
+const edgeOverlayInput = document.getElementById('edgeOverlay');
+const edgeStrengthNumber = document.getElementById('edgeStrengthNumber');
+const edgeStrengthRange = document.getElementById('edgeStrengthRange');
+const edgeSmoothNumber = document.getElementById('edgeSmoothNumber');
+const edgeSmoothRange = document.getElementById('edgeSmoothRange');
 
 const resetPreviewButton = document.getElementById('resetPreview');
 const applyFullButton = document.getElementById('applyFull');
@@ -57,17 +70,40 @@ document.getElementById('upload').onchange = e => {
 
 bindRangeNumber(radiusRange, radiusNumber, handleSmoothingChange);
 bindRangeNumber(sigmaColorRange, sigmaColorNumber, handleSmoothingChange);
+bindRangeNumber(edgeStrengthRange, edgeStrengthNumber, handleSmoothingChange);
+bindRangeNumber(edgeSmoothRange, edgeSmoothNumber, handleSmoothingChange);
+
+previewSettingsToggle.addEventListener('click', e => {
+  e.stopPropagation();
+  const isOpen = previewSettings.classList.toggle('is-open');
+  previewSettingsToggle.setAttribute('aria-expanded', String(isOpen));
+});
+
+document.addEventListener('click', e => {
+  if (!previewSettings.classList.contains('is-open')) return;
+  if (previewSettings.contains(e.target) || previewSettingsToggle.contains(e.target)) return;
+  previewSettings.classList.remove('is-open');
+  previewSettingsToggle.setAttribute('aria-expanded', 'false');
+});
 
 selectionMode.addEventListener('change', () => {
   toggleFixedInputs();
+  handleSettingsChange();
 });
 
 previewWidthInput.addEventListener('input', handleSettingsChange);
 previewHeightInput.addEventListener('input', handleSettingsChange);
 aspectLockInput.addEventListener('change', handleSettingsChange);
+previewAutoSizeInput.addEventListener('change', () => {
+  toggleFixedInputs();
+  handleSettingsChange();
+});
 pixelGridInput.addEventListener('change', () => {
   if (previewRegion) schedulePreviewRender();
 });
+
+edgeDetectInput.addEventListener('change', handleSmoothingChange);
+edgeOverlayInput.addEventListener('change', handleSmoothingChange);
 
 zoomButtons.forEach(button => {
   button.addEventListener('click', () => {
@@ -94,7 +130,14 @@ applyFullButton.addEventListener('click', () => {
   setBusy(true);
   setTimeout(() => {
     const img = fullCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height);
-    const smoothed = smoothRegion(img, getSmoothingOptions());
+    const options = getSmoothingOptions();
+    let smoothed = smoothRegion(img, options);
+
+    if (options.edgeDetect && options.edgePreserve > 0) {
+      const edgeMap = detectEdges(img, { smooth: options.edgeSmooth });
+      smoothed = applyEdgePreserve(img, smoothed, edgeMap, options.edgePreserve);
+    }
+
     fullCtx.putImageData(smoothed, 0, 0);
     setPreviewStale(true);
     setBusy(false);
@@ -128,6 +171,10 @@ setPreviewActive(false);
 setPreviewStale(false);
 
 window.addEventListener('resize', () => {
+  if (previewAutoSizeInput.checked) {
+    syncPreviewSizeToImage();
+    updatePreviewRegionForFixedSize();
+  }
   updateActivePreviewBox();
   if (previewRegion) schedulePreviewRender();
 });
@@ -144,7 +191,18 @@ function bindRangeNumber(rangeInput, numberInput, onChange) {
 }
 
 function handleSettingsChange() {
+  if (previewAutoSizeInput.checked) {
+    syncPreviewSizeToImage();
+  }
+
   if (!previewRegion) return;
+
+  if (selectionMode.value === 'fixed') {
+    updatePreviewRegionForFixedSize();
+    schedulePreviewRender();
+    return;
+  }
+
   setPreviewStale(true);
 }
 
@@ -158,16 +216,35 @@ function getSmoothingOptions() {
     radius: clamp(parseInt(radiusNumber.value, 10) || 3, 1, 12),
     sigmaColor: clamp(parseInt(sigmaColorNumber.value, 10) || 30, 1, 200),
     sigmaSpace: 4,
-    quant: 0
+    quant: 0,
+    edgeDetect: !!edgeDetectInput.checked,
+    edgeOverlay: !!edgeOverlayInput.checked,
+    edgePreserve: clamp(parseInt(edgeStrengthNumber.value, 10) || 0, 0, 100) / 100,
+    edgeSmooth: clamp(parseInt(edgeSmoothNumber.value, 10) || 0, 0, 3)
   };
 }
 
 function getFixedSize() {
+  if (previewAutoSizeInput.checked) {
+    return getAutoFixedSize();
+  }
+
   const maxW = fullCanvas.width || 2048;
   const maxH = fullCanvas.height || 2048;
   const w = clamp(parseInt(previewWidthInput.value, 10) || 160, 16, maxW);
   const h = clamp(parseInt(previewHeightInput.value, 10) || 160, 16, maxH);
   return { w, h };
+}
+
+function getAutoFixedSize() {
+  const maxW = fullCanvas.width || 2048;
+  const maxH = fullCanvas.height || 2048;
+  const displayW = Math.max(1, previewCanvas.clientWidth || 1);
+  const displayH = Math.max(1, previewCanvas.clientHeight || 1);
+  const baseH = clamp(Math.round(displayH), 16, maxH);
+  const ratio = displayW / displayH;
+  const baseW = clamp(Math.round(baseH * ratio), 16, maxW);
+  return { w: baseW, h: baseH };
 }
 
 function getAspectRatio() {
@@ -193,9 +270,11 @@ function setPreviewZoom(zoom) {
 }
 
 function toggleFixedInputs() {
-  const disabled = selectionMode.value !== 'fixed';
-  previewWidthInput.disabled = disabled;
-  previewHeightInput.disabled = disabled;
+  const isFixed = selectionMode.value === 'fixed';
+  const customSize = !previewAutoSizeInput.checked;
+  previewWidthInput.disabled = !isFixed || !customSize;
+  previewHeightInput.disabled = !isFixed || !customSize;
+  aspectLockInput.disabled = selectionMode.value !== 'drag';
 }
 
 function schedulePreviewRender() {
@@ -222,7 +301,16 @@ function renderPreview() {
 
   const { x, y, w, h } = previewRegion;
   const imgData = fullCtx.getImageData(x, y, w, h);
-  const smoothed = smoothRegion(imgData, getSmoothingOptions());
+  const options = getSmoothingOptions();
+  let smoothed = smoothRegion(imgData, options);
+  let edgeMap = null;
+
+  if (options.edgeDetect) {
+    edgeMap = detectEdges(imgData, { smooth: options.edgeSmooth });
+    if (options.edgePreserve > 0) {
+      smoothed = applyEdgePreserve(imgData, smoothed, edgeMap, options.edgePreserve);
+    }
+  }
 
   bufferCanvas.width = w;
   bufferCanvas.height = h;
@@ -251,6 +339,14 @@ function renderPreview() {
   const offsetY = Math.max(0, (displayHeight - drawH) / 2);
 
   previewCtx.drawImage(bufferCanvas, offsetX, offsetY, drawW, drawH);
+
+  if (edgeMap && options.edgeOverlay) {
+    edgeCanvas.width = w;
+    edgeCanvas.height = h;
+    const overlay = edgeMapToImageData(edgeMap, w, h, { opacity: 0.75 });
+    edgeCtx.putImageData(overlay, 0, 0);
+    previewCtx.drawImage(edgeCanvas, offsetX, offsetY, drawW, drawH);
+  }
 
   const gridScale = scale;
   if (pixelGridInput.checked && gridScale >= 2) {
@@ -286,8 +382,44 @@ function drawPixelGrid(ctx, width, height, zoom, offsetX, offsetY, drawW, drawH)
   ctx.restore();
 }
 
+function applyEdgePreserve(original, smoothed, edgeMap, strength) {
+  if (!edgeMap || strength <= 0) return smoothed;
+  const out = new ImageData(new Uint8ClampedArray(smoothed.data.length), smoothed.width, smoothed.height);
+  const src = smoothed.data;
+  const base = original.data;
+  const dst = out.data;
+  const k = Math.max(0, Math.min(1, strength));
+
+  for (let i = 0; i < edgeMap.length; i++) {
+    const edge = edgeMap[i] * k;
+    const keep = edge;
+    const mix = 1 - keep;
+    const idx = i * 4;
+    dst[idx] = src[idx] * mix + base[idx] * keep;
+    dst[idx + 1] = src[idx + 1] * mix + base[idx + 1] * keep;
+    dst[idx + 2] = src[idx + 2] * mix + base[idx + 2] * keep;
+    dst[idx + 3] = base[idx + 3];
+  }
+
+  return out;
+}
+
 function formatRegion(region) {
   return `Region ${region.w}x${region.h} at ${region.x},${region.y}`;
+}
+
+function updatePreviewRegionForFixedSize() {
+  if (!previewRegion || selectionMode.value !== 'fixed') return;
+  const size = getFixedSize();
+  const centerX = previewRegion.x + previewRegion.w / 2;
+  const centerY = previewRegion.y + previewRegion.h / 2;
+  previewRegion = clampRegion({
+    x: Math.round(centerX - size.w / 2),
+    y: Math.round(centerY - size.h / 2),
+    w: size.w,
+    h: size.h
+  }, fullCanvas.width, fullCanvas.height);
+  updateActivePreviewBox();
 }
 
 function syncPreviewSizeToImage() {
@@ -326,6 +458,20 @@ function updateActivePreviewBox() {
   activePreviewBox.style.top = `${previewRegion.y * scaleY}px`;
   activePreviewBox.style.width = `${previewRegion.w * scaleX}px`;
   activePreviewBox.style.height = `${previewRegion.h * scaleY}px`;
+}
+
+function clampRegion(region, maxW, maxH) {
+  const w = Math.max(1, Math.min(region.w, maxW));
+  const h = Math.max(1, Math.min(region.h, maxH));
+  const x = Math.max(0, Math.min(region.x, maxW - w));
+  const y = Math.max(0, Math.min(region.y, maxH - h));
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    w: Math.round(w),
+    h: Math.round(h)
+  };
 }
 
 function setBusy(busy) {
