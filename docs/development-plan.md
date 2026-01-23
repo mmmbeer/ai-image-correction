@@ -116,12 +116,12 @@ The system prioritizes:
 
 ### Phase 2 Progress
 
-* **In progress:** Phase 2 scope expanded with robust correction options and safety guards
-* **Next:** Wire LAB bilateral to chroma-only path (A/B) with L lock
-* **Next:** Add chroma clamp and neutral protection safeguards
-* **Next:** Add adaptive variance-based smoothing
-* **Next:** Implement UI controls for strength, radius, range, and per-channel tuning
-* **Next:** Add preview comparison (A/B toggle or split)
+* **Complete:** LAB chroma-only smoothing pipeline with L lock and per-channel A/B control
+* **Complete:** Adaptive chroma smoothing, chroma clamp, neutral/highlight protection, and skin-tone guard
+* **Complete:** Preview comparison modes (split + A/B) and artifact-boost view (preview-only)
+* **Complete:** RGB vs LAB smoothing mode toggle with dynamic UI visibility
+* **Complete:** Slider UI consolidated to compact range+value readouts with advanced LAB options toggle
+* **Next:** Validate defaults on varied AI images and tune preset thresholds
 
 ---
 

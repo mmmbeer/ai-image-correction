@@ -185,6 +185,19 @@
   margin-bottom: 8px;
 }
 
+.control label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.control .value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .control small {
   grid-column: 1 / -1;
   color: var(--color-text-dim);
@@ -193,6 +206,10 @@
 
 .control input[type="number"] {
   width: 64px;
+}
+
+.control input[type="range"] {
+  grid-column: 1 / -1;
 }
 
 .apply {
@@ -271,6 +288,10 @@
 
 .preview-settings .control:last-child {
   margin-bottom: 0;
+}
+
+.is-hidden {
+  display: none !important;
 }
 
 @keyframes progress-slide {
@@ -355,7 +376,7 @@
         <div id="previewSizeTag">No selection</div>
       </div>
 
-      <div class="controls">
+        <div class="controls">
 
         <!-- PREVIEW TOOLS -->
         <div class="control-group">
@@ -376,6 +397,10 @@
             <input type="checkbox" id="previewPixelGrid">
             <small>Available at 2x and 4x zoom.</small>
           </div>
+        </div>
+
+        <div class="control-group">
+          <h4>Preview Compare</h4>
 
           <div class="control">
             <label>Preview Mode</label>
@@ -387,22 +412,20 @@
             <small>Compare the processed preview against the original.</small>
           </div>
 
-          <div class="control">
-            <label>Split Position</label>
-            <input type="number" id="previewSplitNumber" value="50" min="0" max="100">
+          <div class="control" id="previewSplitControls">
+            <label>Split Position <span class="value" id="previewSplitValue">50</span></label>
             <input type="range" id="previewSplitRange" min="0" max="100" step="1" value="50">
             <small>Only used in split mode.</small>
           </div>
 
-          <div class="control">
+          <div class="control" id="previewABControls">
             <label>A/B Toggle</label>
             <button class="btn btn-ghost btn-small" id="previewABToggle" type="button">Show A</button>
             <small>Switch between original (A) and processed (B).</small>
           </div>
 
           <div class="control">
-            <label>Artifact Boost</label>
-            <input type="number" id="artifactBoostNumber" value="0" min="0" max="100">
+            <label>Artifact Boost <span class="value" id="artifactBoostValue">0</span></label>
             <input type="range" id="artifactBoostRange" min="0" max="100" step="1" value="0">
             <small>Preview-only exaggeration of chroma noise.</small>
           </div>
@@ -422,15 +445,13 @@
           </div>
 
           <div class="control" data-mode="rgb">
-            <label>Bilateral Radius</label>
-            <input type="number" id="radiusNumber" value="3" min="1" max="12">
+            <label>Bilateral Radius <span class="value" id="radiusValue">3</span></label>
             <input type="range" id="radiusRange" min="1" max="12" step="1" value="3">
             <small>Spatial neighborhood size. Higher values flatten larger regions.</small>
           </div>
 
           <div class="control" data-mode="rgb">
-            <label>Color Sigma</label>
-            <input type="number" id="sigmaColorNumber" value="30" min="5" max="200">
+            <label>Color Sigma <span class="value" id="sigmaColorValue">30</span></label>
             <input type="range" id="sigmaColorRange" min="5" max="200" step="1" value="30">
             <small>Controls how aggressively color differences are blended.</small>
           </div>
@@ -451,86 +472,83 @@
           </div>
 
           <div class="control" data-mode="lab">
-            <label>Luminance Preserve</label>
-            <input type="number" id="lumaPreserveNumber" value="85" min="0" max="100">
+            <label>Luminance Preserve <span class="value" id="lumaPreserveValue">85</span></label>
             <input type="range" id="lumaPreserveRange" min="0" max="100" step="1" value="85">
             <small>Preserve perceived detail. Reduce only if flattening shapes.</small>
           </div>
 
           <div class="control" data-mode="lab">
-            <label>Chroma Smooth</label>
-            <input type="number" id="chromaSmoothNumber" value="60" min="0" max="100">
+            <label>Chroma Smooth <span class="value" id="chromaSmoothValue">60</span></label>
             <input type="range" id="chromaSmoothRange" min="0" max="100" step="1" value="60">
             <small>Primary control for removing painterly color noise.</small>
           </div>
 
           <div class="control" data-mode="lab">
-            <label>Chroma A Strength</label>
-            <input type="number" id="chromaSmoothANumber" value="100" min="0" max="100">
+            <label>Chroma A Strength <span class="value" id="chromaSmoothAValue">100</span></label>
             <input type="range" id="chromaSmoothARange" min="0" max="100" step="1" value="100">
             <small>Fine-tune smoothing on the A channel.</small>
           </div>
 
           <div class="control" data-mode="lab">
-            <label>Chroma B Strength</label>
-            <input type="number" id="chromaSmoothBNumber" value="100" min="0" max="100">
+            <label>Chroma B Strength <span class="value" id="chromaSmoothBValue">100</span></label>
             <input type="range" id="chromaSmoothBRange" min="0" max="100" step="1" value="100">
             <small>Fine-tune smoothing on the B channel.</small>
           </div>
 
           <div class="control" data-mode="lab">
-            <label>Chroma Radius</label>
-            <input type="number" id="chromaRadiusNumber" value="3" min="1" max="8">
-            <input type="range" id="chromaRadiusRange" min="1" max="8" step="1" value="3">
-            <small>Spatial radius for LAB chroma smoothing.</small>
+            <label>Advanced LAB Options</label>
+            <input type="checkbox" id="labAdvancedToggle">
+            <small>Show or hide advanced chroma controls.</small>
           </div>
 
-          <div class="control" data-mode="lab">
-            <label>Chroma Spatial Sigma</label>
-            <input type="number" id="chromaSigmaSpaceNumber" value="3" min="0.5" max="12" step="0.1">
-            <input type="range" id="chromaSigmaSpaceRange" min="0.5" max="12" step="0.1" value="3">
-            <small>Controls spatial falloff in LAB mode.</small>
-          </div>
+          <div id="labAdvancedControls" data-mode="lab">
+            <div class="control">
+              <label>Chroma Radius <span class="value" id="chromaRadiusValue">3</span></label>
+              <input type="range" id="chromaRadiusRange" min="1" max="8" step="1" value="3">
+              <small>Spatial radius for LAB chroma smoothing.</small>
+            </div>
 
-          <div class="control" data-mode="lab">
-            <label>Chroma Range Sigma</label>
-            <input type="number" id="chromaSigmaColorNumber" value="26" min="1" max="80">
-            <input type="range" id="chromaSigmaColorRange" min="1" max="80" step="1" value="26">
-            <small>Controls chroma similarity blending in LAB.</small>
-          </div>
+            <div class="control">
+              <label>Chroma Spatial Sigma <span class="value" id="chromaSigmaSpaceValue">3</span></label>
+              <input type="range" id="chromaSigmaSpaceRange" min="0.5" max="12" step="0.1" value="3">
+              <small>Controls spatial falloff in LAB mode.</small>
+            </div>
 
-          <div class="control" data-mode="lab">
-            <label>Chroma Clamp</label>
-            <input type="number" id="chromaClampNumber" value="45" min="0" max="100">
-            <input type="range" id="chromaClampRange" min="0" max="100" step="1" value="45">
-            <small>Limits hue drift and saturation collapse.</small>
-          </div>
+            <div class="control">
+              <label>Chroma Range Sigma <span class="value" id="chromaSigmaColorValue">26</span></label>
+              <input type="range" id="chromaSigmaColorRange" min="1" max="80" step="1" value="26">
+              <small>Controls chroma similarity blending in LAB.</small>
+            </div>
 
-          <div class="control" data-mode="lab">
-            <label>Neutral Protection</label>
-            <input type="number" id="neutralProtectNumber" value="45" min="0" max="100">
-            <input type="range" id="neutralProtectRange" min="0" max="100" step="1" value="45">
-            <small>Reduces chroma shifts in low-saturation areas.</small>
-          </div>
+            <div class="control">
+              <label>Chroma Clamp <span class="value" id="chromaClampValue">45</span></label>
+              <input type="range" id="chromaClampRange" min="0" max="100" step="1" value="45">
+              <small>Limits hue drift and saturation collapse.</small>
+            </div>
 
-          <div class="control" data-mode="lab">
-            <label>Highlight/Shadow Protect</label>
-            <input type="number" id="lumaProtectNumber" value="35" min="0" max="100">
-            <input type="range" id="lumaProtectRange" min="0" max="100" step="1" value="35">
-            <small>Preserves delicate highlights and shadows.</small>
-          </div>
+            <div class="control">
+              <label>Neutral Protection <span class="value" id="neutralProtectValue">45</span></label>
+              <input type="range" id="neutralProtectRange" min="0" max="100" step="1" value="45">
+              <small>Reduces chroma shifts in low-saturation areas.</small>
+            </div>
 
-          <div class="control" data-mode="lab">
-            <label>Adaptive Chroma</label>
-            <input type="number" id="adaptiveChromaNumber" value="40" min="0" max="100">
-            <input type="range" id="adaptiveChromaRange" min="0" max="100" step="1" value="40">
-            <small>Responds to local chroma variance.</small>
-          </div>
+            <div class="control">
+              <label>Highlight/Shadow Protect <span class="value" id="lumaProtectValue">35</span></label>
+              <input type="range" id="lumaProtectRange" min="0" max="100" step="1" value="35">
+              <small>Preserves delicate highlights and shadows.</small>
+            </div>
 
-          <div class="control" data-mode="lab">
-            <label>Protect Skin Tones</label>
-            <input type="checkbox" id="protectSkin" checked>
-            <small>Reduces smoothing in common skin hue ranges.</small>
+            <div class="control">
+              <label>Adaptive Chroma <span class="value" id="adaptiveChromaValue">40</span></label>
+              <input type="range" id="adaptiveChromaRange" min="0" max="100" step="1" value="40">
+              <small>Responds to local chroma variance.</small>
+            </div>
+
+            <div class="control">
+              <label>Protect Skin Tones</label>
+              <input type="checkbox" id="protectSkin" checked>
+              <small>Reduces smoothing in common skin hue ranges.</small>
+            </div>
           </div>
         </div>
 
@@ -539,15 +557,13 @@
           <h4>Palette Simplification</h4>
 
           <div class="control">
-            <label>Palette Levels</label>
-            <input type="number" id="paletteLevelsNumber" value="10" min="0" max="32">
+            <label>Palette Levels <span class="value" id="paletteLevelsValue">10</span></label>
             <input type="range" id="paletteLevelsRange" min="0" max="32" step="1" value="10">
             <small>Lower values reduce color variety. Set to 0 to disable.</small>
           </div>
 
           <div class="control">
-            <label>Neighbor Merge</label>
-            <input type="number" id="neighborMergeNumber" value="35" min="0" max="100">
+            <label>Neighbor Merge <span class="value" id="neighborMergeValue">35</span></label>
             <input type="range" id="neighborMergeRange" min="0" max="100" step="1" value="35">
             <small>Merges small adjacent color changes into local dominant tones.</small>
           </div>
@@ -564,8 +580,7 @@
           </div>
 
           <div class="control">
-            <label>Edge Preserve Strength</label>
-            <input type="number" id="edgeStrengthNumber" value="70" min="0" max="100">
+            <label>Edge Preserve Strength <span class="value" id="edgeStrengthValue">70</span></label>
             <input type="range" id="edgeStrengthRange" min="0" max="100" step="1" value="70">
             <small>Prevents smoothing across strong edges.</small>
           </div>
@@ -577,15 +592,13 @@
           </div>
 
           <div class="control">
-            <label>Edge Smoothing</label>
-            <input type="number" id="edgeSmoothNumber" value="1" min="0" max="3">
+            <label>Edge Smoothing <span class="value" id="edgeSmoothValue">1</span></label>
             <input type="range" id="edgeSmoothRange" min="0" max="3" step="1" value="1">
             <small>Softens detected edges for gentler transitions.</small>
           </div>
 
           <div class="control">
-            <label>Edge Softening</label>
-            <input type="number" id="edgeSoftenNumber" value="20" min="0" max="100">
+            <label>Edge Softening <span class="value" id="edgeSoftenValue">20</span></label>
             <input type="range" id="edgeSoftenRange" min="0" max="100" step="1" value="20">
             <small>Smooths jagged edges without blurring flat areas.</small>
           </div>

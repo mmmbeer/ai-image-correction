@@ -38,56 +38,60 @@ const previewHeightInput = document.getElementById('previewHeight');
 const aspectLockInput = document.getElementById('previewAspectLock');
 const zoomButtons = document.querySelectorAll('#previewZoom button');
 const pixelGridInput = document.getElementById('previewPixelGrid');
-const controlSliders = document.querySelectorAll('.controls input[type="range"], .controls input[type="number"]');
 const controlToggles = document.querySelectorAll('.controls input[type="checkbox"], .controls select');
 
-const radiusNumber = document.getElementById('radiusNumber');
 const radiusRange = document.getElementById('radiusRange');
-const sigmaColorNumber = document.getElementById('sigmaColorNumber');
 const sigmaColorRange = document.getElementById('sigmaColorRange');
 const smoothingModeInput = document.getElementById('smoothingMode');
 const chromaPresetInput = document.getElementById('chromaPreset');
-const lumaPreserveNumber = document.getElementById('lumaPreserveNumber');
 const lumaPreserveRange = document.getElementById('lumaPreserveRange');
-const chromaSmoothNumber = document.getElementById('chromaSmoothNumber');
 const chromaSmoothRange = document.getElementById('chromaSmoothRange');
-const chromaSmoothANumber = document.getElementById('chromaSmoothANumber');
 const chromaSmoothARange = document.getElementById('chromaSmoothARange');
-const chromaSmoothBNumber = document.getElementById('chromaSmoothBNumber');
 const chromaSmoothBRange = document.getElementById('chromaSmoothBRange');
-const chromaRadiusNumber = document.getElementById('chromaRadiusNumber');
 const chromaRadiusRange = document.getElementById('chromaRadiusRange');
-const chromaSigmaSpaceNumber = document.getElementById('chromaSigmaSpaceNumber');
 const chromaSigmaSpaceRange = document.getElementById('chromaSigmaSpaceRange');
-const chromaSigmaColorNumber = document.getElementById('chromaSigmaColorNumber');
 const chromaSigmaColorRange = document.getElementById('chromaSigmaColorRange');
-const chromaClampNumber = document.getElementById('chromaClampNumber');
 const chromaClampRange = document.getElementById('chromaClampRange');
-const neutralProtectNumber = document.getElementById('neutralProtectNumber');
 const neutralProtectRange = document.getElementById('neutralProtectRange');
-const lumaProtectNumber = document.getElementById('lumaProtectNumber');
 const lumaProtectRange = document.getElementById('lumaProtectRange');
-const adaptiveChromaNumber = document.getElementById('adaptiveChromaNumber');
 const adaptiveChromaRange = document.getElementById('adaptiveChromaRange');
 const protectSkinInput = document.getElementById('protectSkin');
-const artifactBoostNumber = document.getElementById('artifactBoostNumber');
 const artifactBoostRange = document.getElementById('artifactBoostRange');
 const previewModeInput = document.getElementById('previewMode');
-const previewSplitNumber = document.getElementById('previewSplitNumber');
 const previewSplitRange = document.getElementById('previewSplitRange');
 const previewABToggle = document.getElementById('previewABToggle');
-const paletteLevelsNumber = document.getElementById('paletteLevelsNumber');
+const labAdvancedToggle = document.getElementById('labAdvancedToggle');
+const previewSplitControls = document.getElementById('previewSplitControls');
+const previewABControls = document.getElementById('previewABControls');
+const labAdvancedControls = document.getElementById('labAdvancedControls');
+
+const radiusValue = document.getElementById('radiusValue');
+const sigmaColorValue = document.getElementById('sigmaColorValue');
+const lumaPreserveValue = document.getElementById('lumaPreserveValue');
+const chromaSmoothValue = document.getElementById('chromaSmoothValue');
+const chromaSmoothAValue = document.getElementById('chromaSmoothAValue');
+const chromaSmoothBValue = document.getElementById('chromaSmoothBValue');
+const chromaRadiusValue = document.getElementById('chromaRadiusValue');
+const chromaSigmaSpaceValue = document.getElementById('chromaSigmaSpaceValue');
+const chromaSigmaColorValue = document.getElementById('chromaSigmaColorValue');
+const chromaClampValue = document.getElementById('chromaClampValue');
+const neutralProtectValue = document.getElementById('neutralProtectValue');
+const lumaProtectValue = document.getElementById('lumaProtectValue');
+const adaptiveChromaValue = document.getElementById('adaptiveChromaValue');
+const artifactBoostValue = document.getElementById('artifactBoostValue');
+const previewSplitValue = document.getElementById('previewSplitValue');
+const paletteLevelsValue = document.getElementById('paletteLevelsValue');
+const neighborMergeValue = document.getElementById('neighborMergeValue');
+const edgeStrengthValue = document.getElementById('edgeStrengthValue');
+const edgeSmoothValue = document.getElementById('edgeSmoothValue');
+const edgeSoftenValue = document.getElementById('edgeSoftenValue');
 const paletteLevelsRange = document.getElementById('paletteLevelsRange');
-const neighborMergeNumber = document.getElementById('neighborMergeNumber');
 const neighborMergeRange = document.getElementById('neighborMergeRange');
 
 const edgeDetectInput = document.getElementById('edgeDetect');
 const edgeOverlayInput = document.getElementById('edgeOverlay');
-const edgeStrengthNumber = document.getElementById('edgeStrengthNumber');
 const edgeStrengthRange = document.getElementById('edgeStrengthRange');
-const edgeSmoothNumber = document.getElementById('edgeSmoothNumber');
 const edgeSmoothRange = document.getElementById('edgeSmoothRange');
-const edgeSoftenNumber = document.getElementById('edgeSoftenNumber');
 const edgeSoftenRange = document.getElementById('edgeSoftenRange');
 
 const resetPreviewButton = document.getElementById('resetPreview');
@@ -124,25 +128,26 @@ document.getElementById('upload').onchange = e => {
   });
 };
 
-bindRangeNumber(radiusRange, radiusNumber, handleSmoothingChange);
-bindRangeNumber(sigmaColorRange, sigmaColorNumber, handleSmoothingChange);
-bindRangeNumber(lumaPreserveRange, lumaPreserveNumber, handleSmoothingChange);
-bindRangeNumber(chromaSmoothRange, chromaSmoothNumber, handleSmoothingChange);
-bindRangeNumber(chromaSmoothARange, chromaSmoothANumber, handleSmoothingChange);
-bindRangeNumber(chromaSmoothBRange, chromaSmoothBNumber, handleSmoothingChange);
-bindRangeNumber(chromaRadiusRange, chromaRadiusNumber, handleSmoothingChange);
-bindRangeNumber(chromaSigmaSpaceRange, chromaSigmaSpaceNumber, handleSmoothingChange);
-bindRangeNumber(chromaSigmaColorRange, chromaSigmaColorNumber, handleSmoothingChange);
-bindRangeNumber(chromaClampRange, chromaClampNumber, handleSmoothingChange);
-bindRangeNumber(neutralProtectRange, neutralProtectNumber, handleSmoothingChange);
-bindRangeNumber(lumaProtectRange, lumaProtectNumber, handleSmoothingChange);
-bindRangeNumber(adaptiveChromaRange, adaptiveChromaNumber, handleSmoothingChange);
-bindRangeNumber(artifactBoostRange, artifactBoostNumber, handleSmoothingChange);
-bindRangeNumber(paletteLevelsRange, paletteLevelsNumber, handleSmoothingChange);
-bindRangeNumber(neighborMergeRange, neighborMergeNumber, handleSmoothingChange);
-bindRangeNumber(edgeStrengthRange, edgeStrengthNumber, handleSmoothingChange);
-bindRangeNumber(edgeSmoothRange, edgeSmoothNumber, handleSmoothingChange);
-bindRangeNumber(edgeSoftenRange, edgeSoftenNumber, handleSmoothingChange);
+bindRangeValue(radiusRange, radiusValue, handleSmoothingChange);
+bindRangeValue(sigmaColorRange, sigmaColorValue, handleSmoothingChange);
+bindRangeValue(lumaPreserveRange, lumaPreserveValue, handleSmoothingChange);
+bindRangeValue(chromaSmoothRange, chromaSmoothValue, handleSmoothingChange);
+bindRangeValue(chromaSmoothARange, chromaSmoothAValue, handleSmoothingChange);
+bindRangeValue(chromaSmoothBRange, chromaSmoothBValue, handleSmoothingChange);
+bindRangeValue(chromaRadiusRange, chromaRadiusValue, handleSmoothingChange);
+bindRangeValue(chromaSigmaSpaceRange, chromaSigmaSpaceValue, handleSmoothingChange);
+bindRangeValue(chromaSigmaColorRange, chromaSigmaColorValue, handleSmoothingChange);
+bindRangeValue(chromaClampRange, chromaClampValue, handleSmoothingChange);
+bindRangeValue(neutralProtectRange, neutralProtectValue, handleSmoothingChange);
+bindRangeValue(lumaProtectRange, lumaProtectValue, handleSmoothingChange);
+bindRangeValue(adaptiveChromaRange, adaptiveChromaValue, handleSmoothingChange);
+bindRangeValue(artifactBoostRange, artifactBoostValue, handleSmoothingChange);
+bindRangeValue(previewSplitRange, previewSplitValue, handleSmoothingChange);
+bindRangeValue(paletteLevelsRange, paletteLevelsValue, handleSmoothingChange);
+bindRangeValue(neighborMergeRange, neighborMergeValue, handleSmoothingChange);
+bindRangeValue(edgeStrengthRange, edgeStrengthValue, handleSmoothingChange);
+bindRangeValue(edgeSmoothRange, edgeSmoothValue, handleSmoothingChange);
+bindRangeValue(edgeSoftenRange, edgeSoftenValue, handleSmoothingChange);
 
 previewSettingsToggle.addEventListener('click', e => {
   e.stopPropagation();
@@ -202,14 +207,7 @@ chromaPresetInput.addEventListener('change', e => {
 protectSkinInput.addEventListener('change', handleSmoothingChange);
 previewModeInput.addEventListener('change', handleSmoothingChange);
 previewModeInput.addEventListener('change', updatePreviewModeControls);
-previewSplitRange.addEventListener('input', () => {
-  previewSplitNumber.value = previewSplitRange.value;
-  handleSmoothingChange();
-});
-previewSplitNumber.addEventListener('input', () => {
-  previewSplitRange.value = previewSplitNumber.value;
-  handleSmoothingChange();
-});
+labAdvancedToggle.addEventListener('change', updateLabAdvancedControls);
 previewABToggle.addEventListener('click', () => {
   previewABState = previewABState === 'A' ? 'B' : 'A';
   updatePreviewABToggle();
@@ -231,16 +229,11 @@ resetPreviewButton.addEventListener('click', () => {
   updateActivePreviewBox();
 });
 
-controlSliders.forEach(input => {
-  if (input.id === 'previewWidth' || input.id === 'previewHeight') return;
-  if (input.id === 'previewSplitNumber' || input.id === 'previewSplitRange') return;
-  input.addEventListener('input', handleSmoothingChange);
-});
-
 controlToggles.forEach(input => {
   if (input === selectionMode || input === previewAutoSizeInput || input === aspectLockInput) return;
   if (input === smoothingModeInput || input === chromaPresetInput || input === previewModeInput) return;
   if (input === protectSkinInput || input === edgeDetectInput || input === edgeOverlayInput) return;
+  if (input === labAdvancedToggle) return;
   if (input.id === 'previewPixelGrid') return;
   input.addEventListener('change', handleSmoothingChange);
 });
@@ -295,6 +288,7 @@ toggleFixedInputs();
 toggleSmoothingModeControls();
 updatePreviewABToggle();
 updatePreviewModeControls();
+updateLabAdvancedControls();
 setPreviewActive(false);
 setPreviewStale(false);
 
@@ -310,15 +304,17 @@ window.addEventListener('resize', () => {
   if (previewRegion) schedulePreviewRender();
 });
 
-function bindRangeNumber(rangeInput, numberInput, onChange) {
-  rangeInput.addEventListener('input', () => {
-    numberInput.value = rangeInput.value;
+function bindRangeValue(rangeInput, valueEl, onChange) {
+  const update = () => {
+    if (valueEl) {
+      valueEl.textContent = rangeInput.value;
+    }
     onChange();
-  });
-  numberInput.addEventListener('input', () => {
-    rangeInput.value = numberInput.value;
-    onChange();
-  });
+  };
+  rangeInput.addEventListener('input', update);
+  if (valueEl) {
+    valueEl.textContent = rangeInput.value;
+  }
 }
 
 function handleSettingsChange() {
@@ -345,32 +341,32 @@ function handleSmoothingChange() {
 function getSmoothingOptions() {
   return {
     smoothingMode: smoothingModeInput.value,
-    radius: clamp(parseInt(radiusNumber.value, 10) || 3, 1, 12),
-    sigmaColor: clamp(parseInt(sigmaColorNumber.value, 10) || 30, 1, 200),
+    radius: clamp(parseInt(radiusRange.value, 10) || 3, 1, 12),
+    sigmaColor: clamp(parseInt(sigmaColorRange.value, 10) || 30, 1, 200),
     sigmaSpace: 4,
     quant: 0,
-    lumaPreserve: clamp(parseInt(lumaPreserveNumber.value, 10) || 85, 0, 100) / 100,
-    chromaSmooth: clamp(parseInt(chromaSmoothNumber.value, 10) || 0, 0, 100) / 100,
-    chromaSmoothA: clamp(parseInt(chromaSmoothANumber.value, 10) || 100, 0, 100) / 100,
-    chromaSmoothB: clamp(parseInt(chromaSmoothBNumber.value, 10) || 100, 0, 100) / 100,
-    chromaRadius: clamp(parseInt(chromaRadiusNumber.value, 10) || 2, 1, 8),
-    chromaSigmaSpace: clamp(parseFloat(chromaSigmaSpaceNumber.value) || 3, 0.5, 12),
-    chromaSigmaColor: clamp(parseInt(chromaSigmaColorNumber.value, 10) || 26, 1, 80),
-    chromaClamp: clamp(parseInt(chromaClampNumber.value, 10) || 0, 0, 100) / 100,
-    neutralProtect: clamp(parseInt(neutralProtectNumber.value, 10) || 0, 0, 100) / 100,
-    lumaProtect: clamp(parseInt(lumaProtectNumber.value, 10) || 0, 0, 100) / 100,
-    adaptiveChroma: clamp(parseInt(adaptiveChromaNumber.value, 10) || 0, 0, 100) / 100,
+    lumaPreserve: clamp(parseInt(lumaPreserveRange.value, 10) || 85, 0, 100) / 100,
+    chromaSmooth: clamp(parseInt(chromaSmoothRange.value, 10) || 0, 0, 100) / 100,
+    chromaSmoothA: clamp(parseInt(chromaSmoothARange.value, 10) || 100, 0, 100) / 100,
+    chromaSmoothB: clamp(parseInt(chromaSmoothBRange.value, 10) || 100, 0, 100) / 100,
+    chromaRadius: clamp(parseInt(chromaRadiusRange.value, 10) || 2, 1, 8),
+    chromaSigmaSpace: clamp(parseFloat(chromaSigmaSpaceRange.value) || 3, 0.5, 12),
+    chromaSigmaColor: clamp(parseInt(chromaSigmaColorRange.value, 10) || 26, 1, 80),
+    chromaClamp: clamp(parseInt(chromaClampRange.value, 10) || 0, 0, 100) / 100,
+    neutralProtect: clamp(parseInt(neutralProtectRange.value, 10) || 0, 0, 100) / 100,
+    lumaProtect: clamp(parseInt(lumaProtectRange.value, 10) || 0, 0, 100) / 100,
+    adaptiveChroma: clamp(parseInt(adaptiveChromaRange.value, 10) || 0, 0, 100) / 100,
     protectSkin: !!protectSkinInput.checked,
-    artifactBoost: clamp(parseInt(artifactBoostNumber.value, 10) || 0, 0, 100) / 100,
+    artifactBoost: clamp(parseInt(artifactBoostRange.value, 10) || 0, 0, 100) / 100,
     previewMode: previewModeInput.value,
-    previewSplit: clamp(parseInt(previewSplitNumber.value, 10) || 50, 0, 100) / 100,
-    paletteLevels: clamp(parseInt(paletteLevelsNumber.value, 10) || 0, 0, 32),
-    neighborMerge: clamp(parseInt(neighborMergeNumber.value, 10) || 0, 0, 100) / 100,
+    previewSplit: clamp(parseInt(previewSplitRange.value, 10) || 50, 0, 100) / 100,
+    paletteLevels: clamp(parseInt(paletteLevelsRange.value, 10) || 0, 0, 32),
+    neighborMerge: clamp(parseInt(neighborMergeRange.value, 10) || 0, 0, 100) / 100,
     edgeDetect: !!edgeDetectInput.checked,
     edgeOverlay: !!edgeOverlayInput.checked,
-    edgePreserve: clamp(parseInt(edgeStrengthNumber.value, 10) || 0, 0, 100) / 100,
-    edgeSmooth: clamp(parseInt(edgeSmoothNumber.value, 10) || 0, 0, 3),
-    edgeSoften: clamp(parseInt(edgeSoftenNumber.value, 10) || 0, 0, 100) / 100
+    edgePreserve: clamp(parseInt(edgeStrengthRange.value, 10) || 0, 0, 100) / 100,
+    edgeSmooth: clamp(parseInt(edgeSmoothRange.value, 10) || 0, 0, 3),
+    edgeSoften: clamp(parseInt(edgeSoftenRange.value, 10) || 0, 0, 100) / 100
   };
 }
 
@@ -459,23 +455,40 @@ function toggleFixedInputs() {
 
 function toggleSmoothingModeControls() {
   const isLab = smoothingModeInput.value !== 'rgb';
+  document.querySelectorAll('[data-mode="rgb"]').forEach(el => {
+    el.classList.toggle('is-hidden', isLab);
+  });
   document.querySelectorAll('[data-mode="rgb"] input, [data-mode="rgb"] select').forEach(el => {
     el.disabled = isLab;
+  });
+  document.querySelectorAll('[data-mode="lab"]').forEach(el => {
+    el.classList.toggle('is-hidden', !isLab);
   });
   document.querySelectorAll('[data-mode="lab"] input, [data-mode="lab"] select').forEach(el => {
     el.disabled = !isLab;
   });
   chromaPresetInput.disabled = !isLab;
   protectSkinInput.disabled = !isLab;
+  if (!isLab) {
+    labAdvancedControls.classList.add('is-hidden');
+  } else {
+    updateLabAdvancedControls();
+  }
 }
 
 function updatePreviewModeControls() {
   const isSplit = previewModeInput.value === 'split';
   const isAB = previewModeInput.value === 'ab';
-  previewSplitNumber.disabled = !isSplit;
+  previewSplitControls.classList.toggle('is-hidden', !isSplit);
+  previewABControls.classList.toggle('is-hidden', !isAB);
   previewSplitRange.disabled = !isSplit;
   previewABToggle.disabled = !isAB;
   updatePreviewABToggle();
+}
+
+function updateLabAdvancedControls() {
+  const show = !!labAdvancedToggle.checked;
+  labAdvancedControls.classList.toggle('is-hidden', !show);
 }
 
 function updatePreviewABToggle() {
@@ -483,9 +496,11 @@ function updatePreviewABToggle() {
   previewABToggle.textContent = previewABState === 'A' ? 'Show B' : 'Show A';
 }
 
-function setRangeNumberValue(rangeInput, numberInput, value) {
+function setRangeValue(rangeInput, valueEl, value) {
   rangeInput.value = value;
-  numberInput.value = value;
+  if (valueEl) {
+    valueEl.textContent = value;
+  }
 }
 
 function applyChromaPreset(preset) {
@@ -538,17 +553,17 @@ function applyChromaPreset(preset) {
 
   if (!presets[preset]) return;
   const values = presets[preset];
-  setRangeNumberValue(lumaPreserveRange, lumaPreserveNumber, values.lumaPreserve);
-  setRangeNumberValue(chromaSmoothRange, chromaSmoothNumber, values.chromaSmooth);
-  setRangeNumberValue(chromaSmoothARange, chromaSmoothANumber, values.chromaSmoothA);
-  setRangeNumberValue(chromaSmoothBRange, chromaSmoothBNumber, values.chromaSmoothB);
-  setRangeNumberValue(chromaRadiusRange, chromaRadiusNumber, values.chromaRadius);
-  setRangeNumberValue(chromaSigmaSpaceRange, chromaSigmaSpaceNumber, values.chromaSigmaSpace);
-  setRangeNumberValue(chromaSigmaColorRange, chromaSigmaColorNumber, values.chromaSigmaColor);
-  setRangeNumberValue(chromaClampRange, chromaClampNumber, values.chromaClamp);
-  setRangeNumberValue(neutralProtectRange, neutralProtectNumber, values.neutralProtect);
-  setRangeNumberValue(lumaProtectRange, lumaProtectNumber, values.lumaProtect);
-  setRangeNumberValue(adaptiveChromaRange, adaptiveChromaNumber, values.adaptiveChroma);
+  setRangeValue(lumaPreserveRange, lumaPreserveValue, values.lumaPreserve);
+  setRangeValue(chromaSmoothRange, chromaSmoothValue, values.chromaSmooth);
+  setRangeValue(chromaSmoothARange, chromaSmoothAValue, values.chromaSmoothA);
+  setRangeValue(chromaSmoothBRange, chromaSmoothBValue, values.chromaSmoothB);
+  setRangeValue(chromaRadiusRange, chromaRadiusValue, values.chromaRadius);
+  setRangeValue(chromaSigmaSpaceRange, chromaSigmaSpaceValue, values.chromaSigmaSpace);
+  setRangeValue(chromaSigmaColorRange, chromaSigmaColorValue, values.chromaSigmaColor);
+  setRangeValue(chromaClampRange, chromaClampValue, values.chromaClamp);
+  setRangeValue(neutralProtectRange, neutralProtectValue, values.neutralProtect);
+  setRangeValue(lumaProtectRange, lumaProtectValue, values.lumaProtect);
+  setRangeValue(adaptiveChromaRange, adaptiveChromaValue, values.adaptiveChroma);
   protectSkinInput.checked = values.protectSkin;
 }
 
