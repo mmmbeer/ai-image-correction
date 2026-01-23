@@ -2,7 +2,14 @@ import { loadImage } from './imageLoader.js';
 import { initPreviewSelector } from './previewSelector.js';
 import { smoothRegion } from './smoothing/smoother.js';
 import { boostChromaArtifacts } from './smoothing/chroma.js';
-import { detectEdges, edgeMapToImageData } from './smoothing/edges.js';
+import {
+  detectEdges,
+  edgeMapToImageData,
+  edgeMapToGrayscale,
+  edgeMapToHeatmap,
+  buildOutlineMap,
+  expandEdgeMap
+} from './smoothing/edges.js';
 import { softenEdges } from './smoothing/edgeSoften.js';
 import { clamp } from './utils/math.js';
 
@@ -92,11 +99,37 @@ const neighborMergeValue = document.getElementById('neighborMergeValue');
 const edgeStrengthValue = document.getElementById('edgeStrengthValue');
 const edgeSmoothValue = document.getElementById('edgeSmoothValue');
 const edgeSoftenValue = document.getElementById('edgeSoftenValue');
+const edgeSensitivityValue = document.getElementById('edgeSensitivityValue');
+const edgeThresholdValue = document.getElementById('edgeThresholdValue');
+const edgePreblurValue = document.getElementById('edgePreblurValue');
+const edgeInfluenceValue = document.getElementById('edgeInfluenceValue');
+const edgeOverlayOpacityValue = document.getElementById('edgeOverlayOpacityValue');
+const outlineThresholdValue = document.getElementById('outlineThresholdValue');
+const outlineThicknessValue = document.getElementById('outlineThicknessValue');
+const outlineMergeStrengthValue = document.getElementById('outlineMergeStrengthValue');
 const paletteLevelsRange = document.getElementById('paletteLevelsRange');
 const neighborMergeRange = document.getElementById('neighborMergeRange');
 
 const edgeDetectInput = document.getElementById('edgeDetect');
 const edgeOverlayInput = document.getElementById('edgeOverlay');
+const outlineOverlayInput = document.getElementById('outlineOverlay');
+const edgeKernelInput = document.getElementById('edgeKernel');
+const edgeSensitivityRange = document.getElementById('edgeSensitivityRange');
+const edgeThresholdRange = document.getElementById('edgeThresholdRange');
+const edgePreblurRange = document.getElementById('edgePreblurRange');
+const edgeInfluenceRange = document.getElementById('edgeInfluenceRange');
+const edgeFalloffInput = document.getElementById('edgeFalloff');
+const edgeOverlayModeInput = document.getElementById('edgeOverlayMode');
+const edgeOverlayOpacityRange = document.getElementById('edgeOverlayOpacityRange');
+const edgeViewInput = document.getElementById('edgeView');
+const outlineModeInput = document.getElementById('outlineMode');
+const outlineThresholdRange = document.getElementById('outlineThresholdRange');
+const outlineThicknessRange = document.getElementById('outlineThicknessRange');
+const outlineThinInput = document.getElementById('outlineThin');
+const outlineColorInput = document.getElementById('outlineColor');
+const outlineMergeInput = document.getElementById('outlineMerge');
+const outlineMergeStrengthRange = document.getElementById('outlineMergeStrengthRange');
+const outlineBlendModeInput = document.getElementById('outlineBlendMode');
 const edgeStrengthRange = document.getElementById('edgeStrengthRange');
 const edgeSmoothRange = document.getElementById('edgeSmoothRange');
 const edgeSoftenRange = document.getElementById('edgeSoftenRange');
@@ -165,6 +198,14 @@ bindRangeValue(neighborMergeRange, neighborMergeValue, handleSmoothingChange);
 bindRangeValue(edgeStrengthRange, edgeStrengthValue, handleSmoothingChange);
 bindRangeValue(edgeSmoothRange, edgeSmoothValue, handleSmoothingChange);
 bindRangeValue(edgeSoftenRange, edgeSoftenValue, handleSmoothingChange);
+bindRangeValue(edgeSensitivityRange, edgeSensitivityValue, handleSmoothingChange);
+bindRangeValue(edgeThresholdRange, edgeThresholdValue, handleSmoothingChange);
+bindRangeValue(edgePreblurRange, edgePreblurValue, handleSmoothingChange);
+bindRangeValue(edgeInfluenceRange, edgeInfluenceValue, handleSmoothingChange);
+bindRangeValue(edgeOverlayOpacityRange, edgeOverlayOpacityValue, handleSmoothingChange);
+bindRangeValue(outlineThresholdRange, outlineThresholdValue, handleSmoothingChange);
+bindRangeValue(outlineThicknessRange, outlineThicknessValue, handleSmoothingChange);
+bindRangeValue(outlineMergeStrengthRange, outlineMergeStrengthValue, handleSmoothingChange);
 
 previewSettingsToggle.addEventListener('click', e => {
   e.stopPropagation();
@@ -213,6 +254,16 @@ pixelGridInput.addEventListener('change', () => {
 
 edgeDetectInput.addEventListener('change', handleSmoothingChange);
 edgeOverlayInput.addEventListener('change', handleSmoothingChange);
+outlineOverlayInput.addEventListener('change', handleSmoothingChange);
+edgeKernelInput.addEventListener('change', handleSmoothingChange);
+edgeFalloffInput.addEventListener('change', handleSmoothingChange);
+edgeOverlayModeInput.addEventListener('change', handleSmoothingChange);
+edgeViewInput.addEventListener('change', handleSmoothingChange);
+outlineModeInput.addEventListener('change', handleSmoothingChange);
+outlineThinInput.addEventListener('change', handleSmoothingChange);
+outlineColorInput.addEventListener('change', handleSmoothingChange);
+outlineMergeInput.addEventListener('change', handleSmoothingChange);
+outlineBlendModeInput.addEventListener('change', handleSmoothingChange);
 smoothingModeInput.addEventListener('change', () => {
   toggleSmoothingModeControls();
   handleSmoothingChange();
@@ -289,6 +340,9 @@ controlToggles.forEach(input => {
   if (input === selectionMode || input === previewAutoSizeInput || input === aspectLockInput) return;
   if (input === smoothingModeInput || input === chromaPresetInput || input === previewModeInput) return;
   if (input === protectSkinInput || input === edgeDetectInput || input === edgeOverlayInput) return;
+  if (input === outlineOverlayInput || input === outlineThinInput || input === outlineMergeInput) return;
+  if (input === edgeKernelInput || input === edgeFalloffInput || input === edgeOverlayModeInput || input === edgeViewInput) return;
+  if (input === outlineModeInput || input === outlineColorInput || input === outlineBlendModeInput) return;
   if (input === labAdvancedToggle) return;
   if (input.id === 'previewPixelGrid') return;
   input.addEventListener('change', handleSmoothingChange);
@@ -303,13 +357,35 @@ applyFullButton.addEventListener('click', () => {
     options.artifactBoost = 0;
     let smoothed = smoothRegion(img, options);
 
-    const needsEdges = options.edgeDetect || options.edgeSoften > 0;
-    const edgeMap = needsEdges ? detectEdges(img, { smooth: options.edgeSmooth }) : null;
+    const edgesEnabled = options.edgeDetect;
+    const needsEdges = edgesEnabled && (options.edgePreserve > 0 || options.edgeSoften > 0 || options.outlineMerge);
+    let edgeMap = needsEdges
+      ? detectEdges(img, {
+        smooth: options.edgeSmooth,
+        kernel: options.edgeKernel,
+        threshold: options.edgeThreshold,
+        sensitivity: options.edgeSensitivity,
+        preBlur: options.edgePreblur
+      })
+      : null;
+
+    if (edgeMap && options.edgeInfluence > 0) {
+      edgeMap = expandEdgeMap(edgeMap, img.width, img.height, options.edgeInfluence);
+    }
     if (edgeMap && options.edgePreserve > 0) {
-      smoothed = applyEdgePreserve(img, smoothed, edgeMap, options.edgePreserve);
+      smoothed = applyEdgePreserve(img, smoothed, edgeMap, options.edgePreserve, options.edgeFalloff);
     }
     if (edgeMap && options.edgeSoften > 0) {
       smoothed = softenEdges(smoothed, edgeMap, options.edgeSoften);
+    }
+    if (edgeMap && options.outlineMerge) {
+      const outlineMap = buildOutlineMap(edgeMap, img.width, img.height, {
+        threshold: options.outlineThreshold,
+        mode: options.outlineMode,
+        thickness: options.outlineThickness,
+        thin: options.outlineThin
+      });
+      smoothed = applyOutlineMerge(smoothed, outlineMap, options);
     }
 
     tunedCanvas.width = fullCanvas.width;
@@ -444,6 +520,24 @@ function getSmoothingOptions() {
     neighborMerge: clamp(parseInt(neighborMergeRange.value, 10) || 0, 0, 100) / 100,
     edgeDetect: !!edgeDetectInput.checked,
     edgeOverlay: !!edgeOverlayInput.checked,
+    outlineOverlay: !!outlineOverlayInput.checked,
+    edgeKernel: edgeKernelInput.value || 'sobel',
+    edgeSensitivity: clamp(parseInt(edgeSensitivityRange.value, 10) || 50, 0, 100) / 100,
+    edgeThreshold: clamp(parseInt(edgeThresholdRange.value, 10) || 30, 0, 100) / 100,
+    edgePreblur: clamp(parseInt(edgePreblurRange.value, 10) || 1, 0, 3),
+    edgeInfluence: clamp(parseInt(edgeInfluenceRange.value, 10) || 1, 0, 6),
+    edgeFalloff: edgeFalloffInput.value || 'linear',
+    edgeOverlayMode: edgeOverlayModeInput.value || 'both',
+    edgeOverlayOpacity: clamp(parseInt(edgeOverlayOpacityRange.value, 10) || 70, 0, 100) / 100,
+    edgeView: edgeViewInput.value || 'result',
+    outlineMode: outlineModeInput.value || 'weighted',
+    outlineThreshold: clamp(parseInt(outlineThresholdRange.value, 10) || 30, 0, 100) / 100,
+    outlineThickness: clamp(parseInt(outlineThicknessRange.value, 10) || 1, 1, 6),
+    outlineThin: !!outlineThinInput.checked,
+    outlineColor: outlineColorInput.value || 'black',
+    outlineMerge: !!outlineMergeInput.checked,
+    outlineMergeStrength: clamp(parseInt(outlineMergeStrengthRange.value, 10) || 40, 0, 100) / 100,
+    outlineBlendMode: outlineBlendModeInput.value || 'multiply',
     edgePreserve: clamp(parseInt(edgeStrengthRange.value, 10) || 0, 0, 100) / 100,
     edgeSmooth: clamp(parseInt(edgeSmoothRange.value, 10) || 0, 0, 3),
     edgeSoften: clamp(parseInt(edgeSoftenRange.value, 10) || 0, 0, 100) / 100
@@ -753,25 +847,67 @@ function renderPreview() {
   const options = getSmoothingOptions();
   let smoothed = smoothRegion(imgData, options);
   let edgeMap = null;
+  let outlineMap = null;
 
-  if (options.edgeDetect || options.edgeSoften > 0) {
-    edgeMap = detectEdges(imgData, { smooth: options.edgeSmooth });
+  const edgesEnabled = options.edgeDetect;
+  const needsEdgeMap = edgesEnabled && (
+    options.edgePreserve > 0 ||
+    options.edgeSoften > 0 ||
+    options.edgeOverlay ||
+    options.outlineOverlay ||
+    options.edgeView !== 'result'
+  );
+
+  if (needsEdgeMap) {
+    edgeMap = detectEdges(imgData, {
+      smooth: options.edgeSmooth,
+      kernel: options.edgeKernel,
+      threshold: options.edgeThreshold,
+      sensitivity: options.edgeSensitivity,
+      preBlur: options.edgePreblur
+    });
+    if (options.edgeInfluence > 0) {
+      edgeMap = expandEdgeMap(edgeMap, w, h, options.edgeInfluence);
+    }
     if (options.edgePreserve > 0) {
-      smoothed = applyEdgePreserve(imgData, smoothed, edgeMap, options.edgePreserve);
+      smoothed = applyEdgePreserve(imgData, smoothed, edgeMap, options.edgePreserve, options.edgeFalloff);
     }
   }
   if (edgeMap && options.edgeSoften > 0) {
     smoothed = softenEdges(smoothed, edgeMap, options.edgeSoften);
   }
 
-  const previewMode = options.previewMode || 'result';
-  const displayResult = options.artifactBoost > 0
+  const needsOutline = edgeMap && (options.outlineOverlay || options.edgeView === 'outline');
+  if (needsOutline) {
+    outlineMap = buildOutlineMap(edgeMap, w, h, {
+      threshold: options.outlineThreshold,
+      mode: options.outlineMode,
+      thickness: options.outlineThickness,
+      thin: options.outlineThin
+    });
+  }
+
+  let previewMode = options.previewMode || 'result';
+  let displayResult = options.artifactBoost > 0
     ? boostChromaArtifacts(imgData, smoothed, options)
     : smoothed;
 
+  let basePreviewData = imgData;
+  if (options.edgeView !== 'result' && edgeMap) {
+    if (options.edgeView === 'edges') {
+      displayResult = edgeMapToGrayscale(edgeMap, w, h, { invert: true });
+    } else if (options.edgeView === 'heatmap') {
+      displayResult = edgeMapToHeatmap(edgeMap, w, h);
+    } else if (options.edgeView === 'outline' && outlineMap) {
+      displayResult = edgeMapToGrayscale(outlineMap, w, h, { invert: true });
+    }
+    basePreviewData = displayResult;
+    previewMode = 'result';
+  }
+
   basePreviewCanvas.width = w;
   basePreviewCanvas.height = h;
-  basePreviewCtx.putImageData(imgData, 0, 0);
+  basePreviewCtx.putImageData(basePreviewData, 0, 0);
 
   bufferCanvas.width = w;
   bufferCanvas.height = h;
@@ -829,12 +965,27 @@ function renderPreview() {
     previewCtx.drawImage(bufferCanvas, 0, 0, scaledW, scaledH);
   }
 
-  if (edgeMap && options.edgeOverlay) {
+  if (edgeMap && (options.edgeOverlay || options.outlineOverlay) && options.edgeView === 'result') {
+    const overlayMode = options.edgeOverlayMode || 'both';
+    const opacity = Math.max(0, Math.min(1, options.edgeOverlayOpacity ?? 0.75));
+    const showEdges = options.edgeOverlay && (overlayMode === 'edges' || overlayMode === 'both');
+    const showOutlines = options.outlineOverlay && (overlayMode === 'outlines' || overlayMode === 'both');
+
     edgeCanvas.width = w;
     edgeCanvas.height = h;
-    const overlay = edgeMapToImageData(edgeMap, w, h, { opacity: 0.75 });
-    edgeCtx.putImageData(overlay, 0, 0);
-    previewCtx.drawImage(edgeCanvas, 0, 0, scaledW, scaledH);
+
+    if (showEdges) {
+      const overlay = edgeMapToImageData(edgeMap, w, h, { opacity });
+      edgeCtx.putImageData(overlay, 0, 0);
+      previewCtx.drawImage(edgeCanvas, 0, 0, scaledW, scaledH);
+    }
+
+    if (showOutlines && outlineMap) {
+      const color = getOutlineColor(options.outlineColor);
+      const overlay = edgeMapToImageData(outlineMap, w, h, { opacity, color });
+      edgeCtx.putImageData(overlay, 0, 0);
+      previewCtx.drawImage(edgeCanvas, 0, 0, scaledW, scaledH);
+    }
   }
 
   const gridScale = scale;
@@ -871,16 +1022,20 @@ function drawPixelGrid(ctx, width, height, zoom, offsetX, offsetY, drawW, drawH)
   ctx.restore();
 }
 
-function applyEdgePreserve(original, smoothed, edgeMap, strength) {
+function applyEdgePreserve(original, smoothed, edgeMap, strength, falloff = 'linear') {
   if (!edgeMap || strength <= 0) return smoothed;
   const out = new ImageData(new Uint8ClampedArray(smoothed.data.length), smoothed.width, smoothed.height);
   const src = smoothed.data;
   const base = original.data;
   const dst = out.data;
   const k = Math.max(0, Math.min(1, strength));
+  const useSmooth = falloff === 'smoothstep';
 
   for (let i = 0; i < edgeMap.length; i++) {
-    const edge = edgeMap[i] * k;
+    let edge = edgeMap[i] * k;
+    if (useSmooth) {
+      edge = edge * edge * (3 - 2 * edge);
+    }
     const keep = edge;
     const mix = 1 - keep;
     const idx = i * 4;
@@ -891,6 +1046,81 @@ function applyEdgePreserve(original, smoothed, edgeMap, strength) {
   }
 
   return out;
+}
+
+function applyOutlineMerge(imgData, outlineMap, options) {
+  const strength = clamp(options.outlineMergeStrength ?? 0, 0, 1);
+  if (!outlineMap || strength <= 0) return imgData;
+
+  const { width, height, data } = imgData;
+  const out = new Uint8ClampedArray(data.length);
+  const color = getOutlineColor(options.outlineColor);
+  const mode = options.outlineBlendMode || 'multiply';
+
+  for (let i = 0; i < outlineMap.length; i++) {
+    const t = Math.max(0, Math.min(1, outlineMap[i] * strength));
+    const idx = i * 4;
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+
+    if (t <= 0) {
+      out[idx] = r;
+      out[idx + 1] = g;
+      out[idx + 2] = b;
+      out[idx + 3] = data[idx + 3];
+      continue;
+    }
+
+    const blended = blendOutlinePixel(r, g, b, color, mode);
+    out[idx] = Math.round(r + (blended[0] - r) * t);
+    out[idx + 1] = Math.round(g + (blended[1] - g) * t);
+    out[idx + 2] = Math.round(b + (blended[2] - b) * t);
+    out[idx + 3] = data[idx + 3];
+  }
+
+  return new ImageData(out, width, height);
+}
+
+function blendOutlinePixel(r, g, b, color, mode) {
+  const cr = color[0];
+  const cg = color[1];
+  const cb = color[2];
+  if (mode === 'darken') {
+    return [Math.min(r, cr), Math.min(g, cg), Math.min(b, cb)];
+  }
+  if (mode === 'overlay') {
+    return [
+      blendOverlayChannel(r, cr),
+      blendOverlayChannel(g, cg),
+      blendOverlayChannel(b, cb)
+    ];
+  }
+  if (mode === 'edge-darken') {
+    return [
+      Math.max(0, r - 90),
+      Math.max(0, g - 90),
+      Math.max(0, b - 90)
+    ];
+  }
+  return [
+    Math.round((r * cr) / 255),
+    Math.round((g * cg) / 255),
+    Math.round((b * cb) / 255)
+  ];
+}
+
+function blendOverlayChannel(base, blend) {
+  if (base < 128) {
+    return Math.round((2 * base * blend) / 255);
+  }
+  return Math.round(255 - (2 * (255 - base) * (255 - blend)) / 255);
+}
+
+function getOutlineColor(choice) {
+  if (choice === 'accent') return [0, 209, 255];
+  if (choice === 'dark') return [20, 20, 20];
+  return [0, 0, 0];
 }
 
 function formatRegion(region) {

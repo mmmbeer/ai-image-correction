@@ -605,15 +605,51 @@
           </div>
 
           <div class="control">
+            <label>Kernel</label>
+            <select id="edgeKernel" class="form-select">
+              <option value="sobel" selected>Sobel</option>
+              <option value="scharr">Scharr</option>
+            </select>
+            <small>Scharr is sharper for fine details.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Sensitivity <span class="value" id="edgeSensitivityValue">50</span></label>
+            <input type="range" id="edgeSensitivityRange" min="0" max="100" step="1" value="50">
+            <small>Amplifies faint edges before thresholding.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Threshold <span class="value" id="edgeThresholdValue">30</span></label>
+            <input type="range" id="edgeThresholdRange" min="0" max="100" step="1" value="30">
+            <small>Suppresses weak edges below this level.</small>
+          </div>
+
+          <div class="control">
+            <label>Noise Suppression <span class="value" id="edgePreblurValue">1</span></label>
+            <input type="range" id="edgePreblurRange" min="0" max="3" step="1" value="1">
+            <small>Pre-blur luminance before detection.</small>
+          </div>
+
+          <div class="control">
             <label>Edge Preserve Strength <span class="value" id="edgeStrengthValue">70</span></label>
             <input type="range" id="edgeStrengthRange" min="0" max="100" step="1" value="70">
             <small>Prevents smoothing across strong edges.</small>
           </div>
 
           <div class="control">
-            <label>Edge Overlay</label>
-            <input type="checkbox" id="edgeOverlay">
-            <small>Visualize detected edges on preview.</small>
+            <label>Edge Influence Radius <span class="value" id="edgeInfluenceValue">1</span></label>
+            <input type="range" id="edgeInfluenceRange" min="0" max="6" step="1" value="1">
+            <small>Expands edge zones for stronger protection.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Falloff</label>
+            <select id="edgeFalloff" class="form-select">
+              <option value="linear" selected>Linear</option>
+              <option value="smoothstep">Smoothstep</option>
+            </select>
+            <small>Controls how quickly protection fades.</small>
           </div>
 
           <div class="control">
@@ -626,6 +662,105 @@
             <label>Edge Softening <span class="value" id="edgeSoftenValue">20</span></label>
             <input type="range" id="edgeSoftenRange" min="0" max="100" step="1" value="20">
             <small>Smooths jagged edges without blurring flat areas.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Overlay</label>
+            <input type="checkbox" id="edgeOverlay" checked>
+            <small>Visualize detected edges on preview.</small>
+          </div>
+
+          <div class="control">
+            <label>Outline Overlay</label>
+            <input type="checkbox" id="outlineOverlay">
+            <small>Show extracted outlines on preview.</small>
+          </div>
+
+          <div class="control">
+            <label>Overlay Mode</label>
+            <select id="edgeOverlayMode" class="form-select">
+              <option value="edges">Edges</option>
+              <option value="outlines">Outlines</option>
+              <option value="both" selected>Both</option>
+            </select>
+            <small>Choose which overlay to display.</small>
+          </div>
+
+          <div class="control">
+            <label>Overlay Opacity <span class="value" id="edgeOverlayOpacityValue">70</span></label>
+            <input type="range" id="edgeOverlayOpacityRange" min="0" max="100" step="1" value="70">
+            <small>Adjust overlay visibility.</small>
+          </div>
+
+          <div class="control">
+            <label>Edge Debug View</label>
+            <select id="edgeView" class="form-select">
+              <option value="result" selected>Result</option>
+              <option value="edges">Edge Only</option>
+              <option value="heatmap">Strength Heatmap</option>
+              <option value="outline">Outline Only</option>
+            </select>
+            <small>Preview edge buffers directly.</small>
+          </div>
+
+          <div class="control">
+            <label>Outline Mode</label>
+            <select id="outlineMode" class="form-select">
+              <option value="weighted" selected>Weighted</option>
+              <option value="binary">Binary</option>
+            </select>
+            <small>Weighted preserves edge strength.</small>
+          </div>
+
+          <div class="control">
+            <label>Outline Threshold <span class="value" id="outlineThresholdValue">30</span></label>
+            <input type="range" id="outlineThresholdRange" min="0" max="100" step="1" value="30">
+            <small>Minimum edge value to trace.</small>
+          </div>
+
+          <div class="control">
+            <label>Outline Thickness <span class="value" id="outlineThicknessValue">1</span></label>
+            <input type="range" id="outlineThicknessRange" min="1" max="6" step="1" value="1">
+            <small>Expands outline width.</small>
+          </div>
+
+          <div class="control">
+            <label>Outline Thinning</label>
+            <input type="checkbox" id="outlineThin" checked>
+            <small>Keep the strongest edge pixels.</small>
+          </div>
+
+          <div class="control">
+            <label>Outline Color</label>
+            <select id="outlineColor" class="form-select">
+              <option value="black" selected>Black</option>
+              <option value="dark">Deep Gray</option>
+              <option value="accent">Accent</option>
+            </select>
+            <small>Overlay/merge tint.</small>
+          </div>
+
+          <div class="control">
+            <label>Merge Outlines</label>
+            <input type="checkbox" id="outlineMerge">
+            <small>Applied only when exporting or full apply.</small>
+          </div>
+
+          <div class="control">
+            <label>Blend Mode</label>
+            <select id="outlineBlendMode" class="form-select">
+              <option value="multiply" selected>Multiply</option>
+              <option value="darken">Darken</option>
+              <option value="overlay">Overlay</option>
+              <option value="edge-darken">Edge Darken</option>
+            </select>
+            <small>How outlines mix into the image.</small>
+          </div>
+
+          <div class="control">
+            <label>Merge Strength <span class="value" id="outlineMergeStrengthValue">40</span></label>
+            <input type="range" id="outlineMergeStrengthRange" min="0" max="100" step="1" value="40">
+            <small>Controls outline impact in full apply.</small>
           </div>
         </div>
 

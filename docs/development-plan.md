@@ -126,28 +126,199 @@ The system prioritizes:
 
 ---
 
-## Phase 3 — Edge Detection & Protection
+## Phase 3 — Edge Detection, Protection & Outlining
 
-**Goal:** Prevent smoothing from destroying intentional edges.
+### Goal
 
-### Features
+Preserve and strengthen **intentional structural edges** in AI-generated images while preventing color smoothing from degrading form.
 
-* Sobel or Scharr edge detection
-* Edge strength map generation
-* Edge-aware smoothing masks
-* Adjustable edge sensitivity
-* Edge preservation strength control
+Phase 3 introduces **edge maps as a tangible data layer**, not just an internal heuristic.
 
-### Visualization
+---
 
-* Edge overlay toggle in preview
-* Adjustable overlay opacity
-* Edge-only debug view
+### Core Concepts Introduced
 
-### Testing
+* Edges are treated as **derived data**, not just constraints
+* Edge maps can be:
 
-* Verify edges remain intact under aggressive smoothing
-* Confirm overlays match detected edges accurately
+  * visualized
+  * tuned
+  * reused
+  * optionally merged back into the image
+* Users gain confidence by *seeing* what the system believes is an edge
+
+---
+
+## Features
+
+### 1. Edge Detection
+
+Implement grayscale edge detection using:
+
+* Sobel (default)
+* Scharr (optional toggle for higher fidelity)
+
+Controls:
+
+* Edge sensitivity / threshold
+* Kernel selection (Sobel vs Scharr)
+* Noise suppression (pre-blur radius)
+
+Output:
+
+* Edge strength map (normalized 0–1)
+
+---
+
+### 2. Edge Strength Map Generation
+
+Generate and store an **edge strength buffer** per preview region:
+
+* Single-channel float map
+* Represents likelihood and intensity of an edge
+* Used downstream by:
+
+  * smoothing masks
+  * overlays
+  * outline generation
+
+This buffer must be reusable across operations.
+
+---
+
+### 3. Edge-Aware Smoothing Masks
+
+Use the edge map to control smoothing behavior:
+
+* Reduce smoothing across strong edges
+* Allow smoothing within flat regions
+* Adjustable falloff curve
+
+Controls:
+
+* Edge preservation strength
+* Edge influence radius
+* Linear vs smoothstep falloff
+
+This ensures color flattening does not bleed across form boundaries.
+
+---
+
+### 4. Image Tracing / Outline Extraction (NEW)
+
+Derive **explicit outlines** from the edge strength map.
+
+Features:
+
+* Binary or weighted outline extraction
+* Adjustable outline thickness
+* Threshold-based tracing
+* Optional edge thinning
+
+Outputs:
+
+* Raster outline layer (grayscale or alpha)
+* Preview-only until explicitly merged
+
+This is *not* vectorization yet.
+It is controlled raster outlining suitable for strengthening borders.
+
+---
+
+### 5. Outline Overlay & Merge Controls
+
+Allow outlines to be used in three ways:
+
+1. **Overlay Only**
+
+   * Preview visualization
+   * Adjustable opacity
+   * Color selection (black, darken, accent color)
+
+2. **Non-Destructive Layer**
+
+   * Stored separately
+   * Can be toggled on/off
+   * Used for inspection and tuning
+
+3. **Merge into Image**
+
+   * Strengthen borders
+   * Reinforce shape readability
+   * Adjustable blend mode:
+
+     * Multiply
+     * Darken
+     * Overlay
+     * Custom edge-darken
+
+Controls:
+
+* Outline opacity
+* Blend mode
+* Merge strength
+
+---
+
+## Visualization
+
+### Edge Tools Panel
+
+* Toggle: Edge detection on/off
+* Toggle: Edge overlay
+* Toggle: Outline overlay
+* Slider: Overlay opacity
+* Dropdown: Overlay mode (edges / outlines / both)
+
+### Debug Views
+
+* Edge-only view (black on white)
+* Strength heatmap
+* Outline-only view
+
+These views are preview-only and never destructive.
+
+---
+
+## Testing
+
+### Functional Tests
+
+* Aggressive color smoothing does not destroy outlines
+* Edge overlays align pixel-perfect with image features
+* Outline extraction respects thresholds
+
+### Visual Tests
+
+* Compare AI image before/after with outlines enabled
+* Verify outlines enhance readability without cartooning
+* Confirm no haloing or double edges
+
+### Regression Safety
+
+* Disabling all edge tools returns smoothing behavior to Phase 2 behavior
+* Edge layer is never applied unless explicitly merged
+
+---
+
+## Why This Belongs in Phase 3 (Not Later)
+
+* Edge detection already exists conceptually in Phase 3
+* Outlines are a **direct derivative** of edge maps
+* This gives users confidence and control early
+* It prevents the “black box smoothing” problem
+* It creates a foundation for later vector or paint workflows without committing to them
+
+---
+
+## Explicitly Deferred (Not Phase 3)
+
+* Vector tracing (SVG paths)
+* Bézier simplification
+* Line-art export
+* Brush-based repainting
+* ML-based semantic edge classification
+
 
 ---
 
