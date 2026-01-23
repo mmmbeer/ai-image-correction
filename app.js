@@ -66,6 +66,11 @@ const labAdvancedToggle = document.getElementById('labAdvancedToggle');
 const previewSplitControls = document.getElementById('previewSplitControls');
 const previewABControls = document.getElementById('previewABControls');
 const labAdvancedControls = document.getElementById('labAdvancedControls');
+const fullCompareMode = document.getElementById('fullCompareMode');
+const fullSplitControls = document.getElementById('fullSplitControls');
+const fullSplitRange = document.getElementById('fullSplitRange');
+const fullSplitValue = document.getElementById('fullSplitValue');
+const fullABControls = document.getElementById('fullABControls');
 
 const radiusValue = document.getElementById('radiusValue');
 const sigmaColorValue = document.getElementById('sigmaColorValue');
@@ -112,6 +117,7 @@ let previewABState = 'B';
 let fullABState = 'B';
 let tunedReady = false;
 let isSplitDragging = false;
+let isFullSplitDragging = false;
 
 document.getElementById('upload').onchange = e => {
   const file = e.target.files[0];
@@ -126,6 +132,7 @@ document.getElementById('upload').onchange = e => {
     tunedReady = false;
     fullABState = 'B';
     updateFullABToggle();
+    updateFullCompareControls();
     fullZoom = 1;
     updateFullCanvasScale();
     previewRegion = null;
@@ -152,6 +159,7 @@ bindRangeValue(lumaProtectRange, lumaProtectValue, handleSmoothingChange);
 bindRangeValue(adaptiveChromaRange, adaptiveChromaValue, handleSmoothingChange);
 bindRangeValue(artifactBoostRange, artifactBoostValue, handleSmoothingChange);
 bindRangeValue(previewSplitRange, previewSplitValue, handleSmoothingChange);
+bindRangeValue(fullSplitRange, fullSplitValue, handleFullCompareChange);
 bindRangeValue(paletteLevelsRange, paletteLevelsValue, handleSmoothingChange);
 bindRangeValue(neighborMergeRange, neighborMergeValue, handleSmoothingChange);
 bindRangeValue(edgeStrengthRange, edgeStrengthValue, handleSmoothingChange);
@@ -217,6 +225,9 @@ protectSkinInput.addEventListener('change', handleSmoothingChange);
 previewModeInput.addEventListener('change', handleSmoothingChange);
 previewModeInput.addEventListener('change', updatePreviewModeControls);
 labAdvancedToggle.addEventListener('change', updateLabAdvancedControls);
+fullCompareMode.addEventListener('change', updateFullCompareControls);
+fullCompareMode.addEventListener('change', renderFullCompareView);
+fullSplitRange.addEventListener('input', handleFullCompareChange);
 previewCanvasWrap.addEventListener('mousedown', e => {
   if (previewModeInput.value !== 'split') return;
   if (!previewRegion) return;
@@ -225,13 +236,33 @@ previewCanvasWrap.addEventListener('mousedown', e => {
 });
 
 window.addEventListener('mousemove', e => {
-  if (!isSplitDragging) return;
-  updateSplitFromEvent(e);
+  if (isSplitDragging) {
+    updateSplitFromEvent(e);
+  }
+  if (isFullSplitDragging) {
+    updateFullSplitFromEvent(e);
+  }
 });
 
 window.addEventListener('mouseup', () => {
-  if (!isSplitDragging) return;
-  isSplitDragging = false;
+  if (isSplitDragging) {
+    isSplitDragging = false;
+  }
+  if (isFullSplitDragging) {
+    isFullSplitDragging = false;
+  }
+});
+
+fullCanvas.addEventListener('mousedown', e => {
+  if (!tunedReady) return;
+  if (fullCompareMode.value !== 'split') return;
+  isFullSplitDragging = true;
+  updateFullSplitFromEvent(e);
+});
+
+fullCanvas.addEventListener('mouseleave', () => {
+  if (!isFullSplitDragging) return;
+  isFullSplitDragging = false;
 });
 previewABToggle.addEventListener('click', () => {
   previewABState = previewABState === 'A' ? 'B' : 'A';
@@ -287,7 +318,8 @@ applyFullButton.addEventListener('click', () => {
     tunedReady = true;
     fullABState = 'B';
     updateFullABToggle();
-    renderFullABView();
+    updateFullCompareControls();
+    renderFullCompareView();
     setPreviewStale(true);
     setBusy(false);
   }, 0);
@@ -297,7 +329,7 @@ fullABToggle.addEventListener('click', () => {
   if (!tunedReady) return;
   fullABState = fullABState === 'A' ? 'B' : 'A';
   updateFullABToggle();
-  renderFullABView();
+  renderFullCompareView();
 });
 
 initPreviewSelector({
@@ -328,6 +360,7 @@ updatePreviewABToggle();
 updatePreviewModeControls();
 updateLabAdvancedControls();
 updateFullABToggle();
+updateFullCompareControls();
 setPreviewActive(false);
 setPreviewStale(false);
 
@@ -344,11 +377,14 @@ window.addEventListener('resize', () => {
 });
 
 function bindRangeValue(rangeInput, valueEl, onChange) {
+  if (!rangeInput) return;
   const update = () => {
     if (valueEl) {
       valueEl.textContent = rangeInput.value;
     }
-    onChange();
+    if (onChange) {
+      onChange();
+    }
   };
   rangeInput.addEventListener('input', update);
   if (valueEl) {
@@ -375,6 +411,11 @@ function handleSettingsChange() {
 function handleSmoothingChange() {
   if (!previewRegion) return;
   schedulePreviewRender();
+}
+
+function handleFullCompareChange() {
+  if (!tunedReady) return;
+  renderFullCompareView();
 }
 
 function getSmoothingOptions() {
@@ -531,6 +572,20 @@ function updateLabAdvancedControls() {
   labAdvancedControls.classList.toggle('is-hidden', !show);
 }
 
+function updateFullCompareControls() {
+  const ready = tunedReady;
+  fullCompareMode.disabled = !ready;
+  const mode = fullCompareMode.value;
+  const isSplit = mode === 'split';
+  const isAB = mode === 'ab';
+  fullSplitControls.classList.toggle('is-hidden', !isSplit);
+  fullABControls.classList.toggle('is-hidden', !isAB);
+  fullSplitRange.disabled = !ready || !isSplit;
+  fullABToggle.disabled = !ready || !isAB;
+  fullCanvas.style.cursor = ready && isSplit ? 'ew-resize' : 'crosshair';
+  updateFullABToggle();
+}
+
 function updateSplitFromEvent(e) {
   const rect = previewCanvas.getBoundingClientRect();
   const x = clamp(e.clientX - rect.left, 0, rect.width || 1);
@@ -541,9 +596,18 @@ function updateSplitFromEvent(e) {
   handleSmoothingChange();
 }
 
+function updateFullSplitFromEvent(e) {
+  const rect = fullCanvas.getBoundingClientRect();
+  const x = clamp(e.clientX - rect.left, 0, rect.width || 1);
+  const ratio = rect.width ? x / rect.width : 0.5;
+  const value = Math.round(ratio * 100);
+  fullSplitRange.value = value;
+  if (fullSplitValue) fullSplitValue.textContent = value;
+  renderFullCompareView();
+}
+
 function updateFullABToggle() {
   if (!fullABToggle) return;
-  fullABToggle.disabled = !tunedReady;
   if (!tunedReady) {
     fullABToggle.textContent = 'Show Original';
     return;
@@ -551,14 +615,37 @@ function updateFullABToggle() {
   fullABToggle.textContent = fullABState === 'A' ? 'Show Result' : 'Show Original';
 }
 
-function renderFullABView() {
+function renderFullCompareView() {
   if (!imageLoaded) return;
   if (!tunedReady) return;
-  if (fullABState === 'A') {
-    fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
+  const mode = fullCompareMode.value || 'ab';
+  fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
+
+  if (mode === 'split') {
+    const splitRatio = clamp(parseInt(fullSplitRange.value, 10) || 50, 0, 100) / 100;
+    const splitX = Math.round(fullCanvas.width * splitRatio);
+    fullCtx.drawImage(baseCanvas, 0, 0);
+    fullCtx.save();
+    fullCtx.beginPath();
+    fullCtx.rect(splitX, 0, fullCanvas.width - splitX, fullCanvas.height);
+    fullCtx.clip();
+    fullCtx.drawImage(tunedCanvas, 0, 0);
+    fullCtx.restore();
+    fullCtx.save();
+    fullCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+    fullCtx.lineWidth = 1;
+    fullCtx.beginPath();
+    fullCtx.moveTo(splitX + 0.5, 0);
+    fullCtx.lineTo(splitX + 0.5, fullCanvas.height);
+    fullCtx.stroke();
+    fullCtx.fillStyle = 'rgba(0,0,0,0.55)';
+    fullCtx.fillRect(splitX - 6, Math.max(0, fullCanvas.height / 2 - 14), 12, 28);
+    fullCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+    fullCtx.strokeRect(splitX - 6, Math.max(0, fullCanvas.height / 2 - 14), 12, 28);
+    fullCtx.restore();
+  } else if (fullABState === 'A') {
     fullCtx.drawImage(baseCanvas, 0, 0);
   } else {
-    fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
     fullCtx.drawImage(tunedCanvas, 0, 0);
   }
 }
