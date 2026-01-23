@@ -23,6 +23,8 @@ const edgeCanvas = document.createElement('canvas');
 const edgeCtx = edgeCanvas.getContext('2d');
 const baseCanvas = document.createElement('canvas');
 const baseCtx = baseCanvas.getContext('2d', { willReadFrequently: true });
+const tunedCanvas = document.createElement('canvas');
+const tunedCtx = tunedCanvas.getContext('2d', { willReadFrequently: true });
 
 const previewPanel = document.querySelector('.preview-panel');
 const previewActiveBadge = document.getElementById('previewActiveBadge');
@@ -96,6 +98,7 @@ const edgeSoftenRange = document.getElementById('edgeSoftenRange');
 
 const resetPreviewButton = document.getElementById('resetPreview');
 const applyFullButton = document.getElementById('applyFull');
+const fullABToggle = document.getElementById('fullABToggle');
 
 let imageLoaded = false;
 let previewRegion = null;
@@ -106,6 +109,9 @@ let isRendering = false;
 let renderQueued = false;
 let baseReady = false;
 let previewABState = 'B';
+let fullABState = 'B';
+let tunedReady = false;
+let isSplitDragging = false;
 
 document.getElementById('upload').onchange = e => {
   const file = e.target.files[0];
@@ -117,6 +123,9 @@ document.getElementById('upload').onchange = e => {
     baseCanvas.height = fullCanvas.height;
     baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
     baseCtx.drawImage(fullCanvas, 0, 0);
+    tunedReady = false;
+    fullABState = 'B';
+    updateFullABToggle();
     fullZoom = 1;
     updateFullCanvasScale();
     previewRegion = null;
@@ -208,6 +217,22 @@ protectSkinInput.addEventListener('change', handleSmoothingChange);
 previewModeInput.addEventListener('change', handleSmoothingChange);
 previewModeInput.addEventListener('change', updatePreviewModeControls);
 labAdvancedToggle.addEventListener('change', updateLabAdvancedControls);
+previewCanvasWrap.addEventListener('mousedown', e => {
+  if (previewModeInput.value !== 'split') return;
+  if (!previewRegion) return;
+  isSplitDragging = true;
+  updateSplitFromEvent(e);
+});
+
+window.addEventListener('mousemove', e => {
+  if (!isSplitDragging) return;
+  updateSplitFromEvent(e);
+});
+
+window.addEventListener('mouseup', () => {
+  if (!isSplitDragging) return;
+  isSplitDragging = false;
+});
 previewABToggle.addEventListener('click', () => {
   previewABState = previewABState === 'A' ? 'B' : 'A';
   updatePreviewABToggle();
@@ -256,10 +281,23 @@ applyFullButton.addEventListener('click', () => {
       smoothed = softenEdges(smoothed, edgeMap, options.edgeSoften);
     }
 
-    fullCtx.putImageData(smoothed, 0, 0);
+    tunedCanvas.width = fullCanvas.width;
+    tunedCanvas.height = fullCanvas.height;
+    tunedCtx.putImageData(smoothed, 0, 0);
+    tunedReady = true;
+    fullABState = 'B';
+    updateFullABToggle();
+    renderFullABView();
     setPreviewStale(true);
     setBusy(false);
   }, 0);
+});
+
+fullABToggle.addEventListener('click', () => {
+  if (!tunedReady) return;
+  fullABState = fullABState === 'A' ? 'B' : 'A';
+  updateFullABToggle();
+  renderFullABView();
 });
 
 initPreviewSelector({
@@ -289,6 +327,7 @@ toggleSmoothingModeControls();
 updatePreviewABToggle();
 updatePreviewModeControls();
 updateLabAdvancedControls();
+updateFullABToggle();
 setPreviewActive(false);
 setPreviewStale(false);
 
@@ -483,12 +522,45 @@ function updatePreviewModeControls() {
   previewABControls.classList.toggle('is-hidden', !isAB);
   previewSplitRange.disabled = !isSplit;
   previewABToggle.disabled = !isAB;
+  previewCanvasWrap.style.cursor = isSplit ? 'ew-resize' : 'default';
   updatePreviewABToggle();
 }
 
 function updateLabAdvancedControls() {
   const show = !!labAdvancedToggle.checked;
   labAdvancedControls.classList.toggle('is-hidden', !show);
+}
+
+function updateSplitFromEvent(e) {
+  const rect = previewCanvas.getBoundingClientRect();
+  const x = clamp(e.clientX - rect.left, 0, rect.width || 1);
+  const ratio = rect.width ? x / rect.width : 0.5;
+  const value = Math.round(ratio * 100);
+  previewSplitRange.value = value;
+  if (previewSplitValue) previewSplitValue.textContent = value;
+  handleSmoothingChange();
+}
+
+function updateFullABToggle() {
+  if (!fullABToggle) return;
+  fullABToggle.disabled = !tunedReady;
+  if (!tunedReady) {
+    fullABToggle.textContent = 'Show Original';
+    return;
+  }
+  fullABToggle.textContent = fullABState === 'A' ? 'Show Result' : 'Show Original';
+}
+
+function renderFullABView() {
+  if (!imageLoaded) return;
+  if (!tunedReady) return;
+  if (fullABState === 'A') {
+    fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
+    fullCtx.drawImage(baseCanvas, 0, 0);
+  } else {
+    fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
+    fullCtx.drawImage(tunedCanvas, 0, 0);
+  }
 }
 
 function updatePreviewABToggle() {
@@ -655,6 +727,10 @@ function renderPreview() {
     previewCtx.moveTo(splitX + 0.5, 0);
     previewCtx.lineTo(splitX + 0.5, scaledH);
     previewCtx.stroke();
+    previewCtx.fillStyle = 'rgba(0,0,0,0.55)';
+    previewCtx.fillRect(splitX - 6, Math.max(0, scaledH / 2 - 14), 12, 28);
+    previewCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+    previewCtx.strokeRect(splitX - 6, Math.max(0, scaledH / 2 - 14), 12, 28);
     previewCtx.restore();
   } else if (previewMode === 'ab') {
     if (previewABState === 'A') {

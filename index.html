@@ -431,6 +431,31 @@
           </div>
         </div>
 
+        <div class="control-group">
+          <h4>Full Image Compare</h4>
+
+          <div class="control">
+            <label>Compare Mode</label>
+            <select id="fullCompareMode" class="form-select">
+              <option value="ab" selected>A/B Toggle</option>
+              <option value="split">Split View</option>
+            </select>
+            <small>Choose between toggle or split compare.</small>
+          </div>
+
+          <div class="control" id="fullSplitControls">
+            <label>Split Position <span class="value" id="fullSplitValue">50</span></label>
+            <input type="range" id="fullSplitRange" min="0" max="100" step="1" value="50">
+            <small>Drag on the full image to adjust.</small>
+          </div>
+
+          <div class="control" id="fullABControls">
+            <label>Full Image A/B</label>
+            <button class="btn btn-ghost btn-small" id="fullABToggle" type="button">Show Original</button>
+            <small>Toggle between original (A) and applied result (B).</small>
+          </div>
+        </div>
+
         <!-- COLOR SMOOTHING -->
         <div class="control-group">
           <h4>Color Smoothing</h4>

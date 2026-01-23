@@ -121,6 +121,7 @@ The system prioritizes:
 * **Complete:** Preview comparison modes (split + A/B) and artifact-boost view (preview-only)
 * **Complete:** RGB vs LAB smoothing mode toggle with dynamic UI visibility
 * **Complete:** Slider UI consolidated to compact range+value readouts with advanced LAB options toggle
+* **Complete:** Draggable split handle in preview + full-image A/B toggle (original vs applied)
 * **Next:** Validate defaults on varied AI images and tune preset thresholds
 
 ---
